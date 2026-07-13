@@ -26,6 +26,7 @@ import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
+import com.example.lock.MetadataConfirmActivity
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import java.io.File
@@ -108,6 +109,8 @@ class FilePreviewActivity : AppCompatActivity() {
         selectedPaths.addAll(intent.getStringArrayListExtra("preselected_files") ?: arrayListOf())
 
         val type = FileTypeResolver.resolve(file)
+        val operationalMode = intent.getStringExtra("crypto_mode") ?: "ENCRYPT"
+
         previewTitle.text = file.name
         previewDetails.text = "${FileTypeResolver.badge(type, file.extension)} • ${Formatter.formatShortFileSize(this, file.length())}"
         selectCheckBox.isChecked = selectedPaths.contains(file.absolutePath)
@@ -121,10 +124,23 @@ class FilePreviewActivity : AppCompatActivity() {
         }
 
         btnDone.setOnClickListener {
+            if (operationalMode == "METADATA") {
+                val intent = Intent(this, MetadataConfirmActivity::class.java)
+                intent.putStringArrayListExtra("SELECTED_FILES", arrayListOf(file.absolutePath))
+                startActivity(intent)
+                finish()
+                return@setOnClickListener
+            }
             val resultIntent = intent
             resultIntent.putStringArrayListExtra("updated_selected_files", ArrayList(selectedPaths))
             setResult(RESULT_OK, resultIntent)
             finish()
+        }
+
+        if (operationalMode == "METADATA") {
+            btnDone.text = "PROCEED TO STRIP"
+            btnDone.setBackgroundColor(android.graphics.Color.parseColor("#54F0A3"))
+            btnDone.setTextColor(android.graphics.Color.parseColor("#06120C"))
         }
 
         uiHandler.post(progressUpdater)

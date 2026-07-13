@@ -41,11 +41,10 @@
             android:id="@+id/logo_image_shell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="2dp"
             android:background="#071019"
             app:layout_constraintDimensionRatio="1:1"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
@@ -67,9 +66,9 @@
         android:gravity="center_horizontal"
         android:orientation="vertical"
         android:paddingStart="24dp"
-        android:paddingTop="24dp"
+        android:paddingTop="20dp"
         android:paddingEnd="24dp"
-        android:paddingBottom="16dp">
+        android:paddingBottom="10dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -77,53 +76,11 @@
             android:orientation="horizontal">
 
             <com.google.android.material.card.MaterialCardView
-                android:id="@+id/encrypt_btn"
-                android:layout_width="0dp"
-                android:layout_height="68dp"
-                android:layout_weight="1"
-                android:layout_marginEnd="8dp"
-                android:clickable="true"
-                android:focusable="true"
-                app:cardBackgroundColor="#0A361B"
-                app:cardCornerRadius="18dp"
-                app:cardElevation="0dp"
-                app:rippleColor="#22D4AF37"
-                app:strokeColor="#C9A85F"
-                app:strokeWidth="1.2dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:orientation="horizontal"
-                    android:gravity="center"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="8dp">
-
-                    <ImageView
-                        android:id="@+id/encrypt_icon"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@android:drawable/ic_lock_lock"
-                        app:tint="#D4AF37" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
-                        android:fontFamily="monospace"
-                        android:text="ENCRYPT"
-                        android:textColor="#E6C97A"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/decrypt_btn"
                 android:layout_width="0dp"
                 android:layout_height="68dp"
                 android:layout_weight="1"
-                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
                 android:clickable="true"
                 android:focusable="true"
                 app:cardBackgroundColor="#4A1212"
@@ -159,20 +116,104 @@
                         android:textStyle="bold" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/encrypt_btn"
+                android:layout_width="0dp"
+                android:layout_height="68dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardBackgroundColor="#0A361B"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="0dp"
+                app:rippleColor="#22D4AF37"
+                app:strokeColor="#C9A85F"
+                app:strokeWidth="1.2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp">
+
+                    <ImageView
+                        android:id="@+id/encrypt_icon"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_lock_lock"
+                        app:tint="#D4AF37" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:fontFamily="monospace"
+                        android:text="ENCRYPT"
+                        android:textColor="#E6C97A"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="26dp"
             android:orientation="horizontal">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/text_encrypt_btn"
+                android:layout_width="0dp"
+                android:layout_height="68dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardBackgroundColor="#4A126B"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="0dp"
+                app:rippleColor="#22D4AF37"
+                app:strokeColor="#C9A85F"
+                app:strokeWidth="1.2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp">
+
+                    <ImageView
+                        android:id="@+id/text_encrypt_icon"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_menu_edit"
+                        app:tint="#D4AF37" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:fontFamily="monospace"
+                        android:text="TEXT ENCRYPT"
+                        android:textColor="#E6C97A"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/safe_delete_btn"
                 android:layout_width="0dp"
                 android:layout_height="68dp"
                 android:layout_weight="1"
-                android:layout_marginEnd="8dp"
+                android:layout_marginStart="8dp"
                 android:clickable="true"
                 android:focusable="true"
                 app:cardBackgroundColor="#212529"
@@ -208,16 +249,23 @@
                         android:textStyle="bold" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal">
 
             <com.google.android.material.card.MaterialCardView
-                android:id="@+id/text_encrypt_btn"
+                android:id="@+id/metadata_btn"
                 android:layout_width="0dp"
                 android:layout_height="68dp"
                 android:layout_weight="1"
-                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
                 android:clickable="true"
                 android:focusable="true"
-                app:cardBackgroundColor="#4A126B"
+                app:cardBackgroundColor="#0F3460"
                 app:cardCornerRadius="18dp"
                 app:cardElevation="0dp"
                 app:rippleColor="#22D4AF37"
@@ -233,10 +281,10 @@
                     android:paddingEnd="8dp">
 
                     <ImageView
-                        android:id="@+id/text_encrypt_icon"
+                        android:id="@+id/metadata_icon"
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:src="@android:drawable/ic_menu_edit"
+                        android:src="@android:drawable/ic_menu_info_details"
                         app:tint="#D4AF37" />
 
                     <TextView
@@ -244,8 +292,49 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="10dp"
                         android:fontFamily="monospace"
-                        android:text="TEXT ENCRYPT"
+                        android:text="META DATA"
                         android:textColor="#E6C97A"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/soon_btn"
+                android:layout_width="0dp"
+                android:layout_height="68dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:clickable="false"
+                android:focusable="false"
+                app:cardBackgroundColor="#161A1D"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="0dp"
+                app:strokeColor="#55C9A85F"
+                app:strokeWidth="1.2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp">
+
+                    <ImageView
+                        android:id="@+id/soon_icon"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_menu_help"
+                        app:tint="#55D4AF37" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:fontFamily="monospace"
+                        android:text="SOON..."
+                        android:textColor="#55E6C97A"
                         android:textSize="13sp"
                         android:textStyle="bold" />
                 </LinearLayout>

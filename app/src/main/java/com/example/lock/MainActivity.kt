@@ -12,6 +12,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var decryptBtn: MaterialCardView
     private lateinit var safeDeleteBtn: MaterialCardView
     private lateinit var textEncryptBtn: MaterialCardView
+    private lateinit var metadataBtn: MaterialCardView
     private lateinit var safeExitBtn: MaterialCardView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,6 +25,7 @@ class MainActivity : AppCompatActivity() {
         decryptBtn = findViewById(R.id.decrypt_btn)
         safeDeleteBtn = findViewById(R.id.safe_delete_btn)
         textEncryptBtn = findViewById(R.id.text_encrypt_btn)
+        metadataBtn = findViewById(R.id.metadata_btn)
         safeExitBtn = findViewById(R.id.safe_exit_btn)
 
         encryptBtn.setOnClickListener {
@@ -46,6 +48,12 @@ class MainActivity : AppCompatActivity() {
 
         textEncryptBtn.setOnClickListener {
             val intent = Intent(this, TextEncryptionActivity::class.java)
+            startActivity(intent)
+        }
+
+        metadataBtn.setOnClickListener {
+            val intent = Intent(this, FileBrowserActivity::class.java)
+            intent.putExtra("crypto_mode", "METADATA")
             startActivity(intent)
         }
 

@@ -10,6 +10,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.lock.crypto.EncryptionManager
+import com.example.lock.crypto.SecureMetadataStripper
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -80,10 +81,11 @@ class ProcessingActivity : AppCompatActivity() {
         percentText.visibility = View.VISIBLE
         stageText.visibility = View.VISIBLE
 
-        statusText.text = if (currentMode == "ENCRYPT") {
-            "Encrypting......"
-        } else {
-            "Decrypting......"
+        statusText.text = when (currentMode) {
+            "ENCRYPT" -> "Encrypting......"
+            "DECRYPT" -> "Decrypting......"
+            "METADATA_PURGE" -> "Stripping Metadata..."
+            else -> "Processing..."
         }
 
         statusText.setTextColor(Color.parseColor("#FF1744"))
@@ -105,20 +107,11 @@ class ProcessingActivity : AppCompatActivity() {
                 val result = withContext(Dispatchers.IO) {
                     updateStageOnMainThread("Please wait")
 
-                    if (mode == "ENCRYPT") {
-                        performEncryption(
-                            filePaths = filePaths,
-                            password = password,
-                            secondZipPassword = secondZipPassword,
-                            encType = encType,
-                            deleteAfter = deleteAfter
-                        )
-                    } else {
-                        performDecryption(
-                            filePaths = filePaths,
-                            password = password,
-                            secondDecryptPassword = secondDecryptPassword
-                        )
+                    when (mode) {
+                        "ENCRYPT" -> performEncryption(filePaths, password, secondZipPassword, encType, deleteAfter)
+                        "DECRYPT" -> performDecryption(filePaths, password, secondDecryptPassword)
+                        "METADATA_PURGE" -> performMetadataPurge(filePaths)
+                        else -> false
                     }
                 }
 
@@ -607,18 +600,19 @@ class ProcessingActivity : AppCompatActivity() {
         progressBar.visibility = View.GONE
         statusText.setTextColor(Color.parseColor("#00FF66"))
 
-        statusText.text = if (currentMode == "ENCRYPT") {
-            "Encryption Operation Completed Successfully"
-        } else {
-            "Decryption Operation Completed Successfully"
+        statusText.text = when (currentMode) {
+            "ENCRYPT" -> "Encryption Operation Completed Successfully"
+            "DECRYPT" -> "Decryption Operation Completed Successfully"
+            "METADATA_PURGE" -> "Metadata Stripped Successfully"
+            else -> "Operation Completed"
         }
 
         percentText.text = "100%"
 
-        stageText.text = if (currentMode == "ENCRYPT") {
-            "Files saved inside the ENC"
-        } else {
-            "Files saved inside the DEC"
+        stageText.text = when (currentMode) {
+            "ENCRYPT" -> "Files saved inside the ENC"
+            "METADATA_PURGE" -> "Files saved inside NO meta folder"
+            else -> "Files saved inside the DEC"
         }
 
         btnDone.visibility = View.VISIBLE
@@ -633,4 +627,47 @@ class ProcessingActivity : AppCompatActivity() {
         btnDone.visibility = View.VISIBLE
         btnDone.text = "BACK"
     }
+
+    private suspend fun performMetadataPurge(filePaths: ArrayList<String>): Boolean {
+        var completed = 0
+        val total = filePaths.size
+        val root = android.os.Environment.getExternalStorageDirectory()
+        val noMetaDir = java.io.File(root, "NO meta")
+
+        if (!noMetaDir.exists()) {
+            noMetaDir.mkdirs()
+        }
+
+        var allSuccess = true
+        for (path in filePaths) {
+            val inputFile = java.io.File(path)
+            if (!inputFile.exists()) continue
+
+            updateStageOnMainThread("Stripping: ${inputFile.name}")
+            val outputFile = java.io.File(noMetaDir, "CLEAN_" + inputFile.name)
+
+            try {
+                val success = when {
+                    path.lowercase().endsWith(".jpg") || path.lowercase().endsWith(".jpeg") || path.lowercase().endsWith(".png") -> {
+                        SecureMetadataStripper.stripImage(java.io.FileInputStream(inputFile), java.io.FileOutputStream(outputFile))
+                    }
+                    path.lowercase().endsWith(".mp4") || path.lowercase().endsWith(".mp3") || path.lowercase().endsWith(".m4a") -> {
+                        SecureMetadataStripper.stripMedia(inputFile.absolutePath, outputFile.absolutePath)
+                    }
+                    path.lowercase().endsWith(".pdf") -> {
+                        SecureMetadataStripper.stripPdf(inputFile, java.io.FileOutputStream(outputFile))
+                    }
+                    else -> false
+                }
+                if (!success) allSuccess = false
+            } catch (e: Exception) {
+                allSuccess = false
+            }
+
+            completed++
+            updateProgressOnMainThread((completed * 100) / total)
+        }
+        return allSuccess
+    }
+
 }

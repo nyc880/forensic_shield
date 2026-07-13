@@ -31,11 +31,12 @@ Look at the image below to see the difference in technical approach and security
 
 
 ## Technical & Defensive Specifications
-* Advanced Cipher Engine: Concurrent combination of AES-256-GCM and ChaCha20 to create a two-layer defensive shield[cite: 4].
-* Modern Key Derivation: Utilizing Argon2id + HKDF algorithms for the complete neutralization of hardware and brute-force attacks[cite: 4].
-* Government-Level Secure Wipe: In compliance with strict NIST standards, rendering the recovery of deleted files impossible, even in forensic laboratories[cite: 5].
-* Instant Memory Cleansing (RAM Zeroization): Immediate purging and destruction of any passwords or sensitive structures from RAM to prevent key leakage in the event of device seizure[cite: 4].
-* 100% Offline Architecture (Zero-Knowledge): No backdoors, no internet connection required (No Internet Permission), and zero cloud dependency[cite: 4].
+* Advanced Cipher Engine: Concurrent combination of AES-256-GCM and ChaCha20 to create a two-layer defensive shield.
+* Modern Key Derivation: Utilizing Argon2id + HKDF algorithms for the complete neutralization of hardware and brute-force attacks.
+* Government-Level Secure Wipe: In compliance with strict NIST standards, rendering the recovery of deleted files impossible, even in forensic laboratories.
+* **Zero-Trace Metadata Stripping:** Complete extraction and destruction of hidden file metadata (including EXIF data, GPS coordinates, creation timestamps, and device details) before sharing sensitive files, ensuring absolute privacy and neutralizing digital footprints.
+* Instant Memory Cleansing (RAM Zeroization): Immediate purging and destruction of any passwords or sensitive structures from RAM to prevent key leakage in the event of device seizure.
+* 100% Offline Architecture (Zero-Knowledge): No backdoors, no internet connection required (No Internet Permission), and zero cloud dependency.
 * Secure Text Encryption: A dedicated, high-entropy module for sensitive notes, utilizing AES-256-GCM standards, secure clipboard management, and tamper-proof PDF export.
 
 ## Documentation & Quick Links

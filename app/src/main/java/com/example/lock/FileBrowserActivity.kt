@@ -38,6 +38,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
+import com.example.lock.MetadataConfirmActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -210,6 +211,11 @@ class FileBrowserActivity : AppCompatActivity() {
                 screenTitle.text = "Safe Delete"
                 screenSubtitle.text = "Select files or folders for secure deletion"
             }
+
+            "METADATA" -> {
+                screenTitle.text = "Strip Metadata"
+                screenSubtitle.text = "Select files to remove all digital traces"
+            }
         }
     }
 
@@ -218,6 +224,7 @@ class FileBrowserActivity : AppCompatActivity() {
             "ENCRYPT" -> "Continue to Encrypt"
             "DECRYPT" -> "Continue to Decrypt"
             "SAFE_DELETE" -> "Continue to Safe Delete"
+            "METADATA" -> "Continue to Strip Metadata"
             else -> "Continue"
         }
 
@@ -242,6 +249,12 @@ class FileBrowserActivity : AppCompatActivity() {
 
                 "SAFE_DELETE" -> {
                     val intent = Intent(this, SafeDeleteConfirmActivity::class.java)
+                    intent.putStringArrayListExtra("SELECTED_FILES", ArrayList(selectedPaths))
+                    startActivity(intent)
+                }
+
+                "METADATA" -> {
+                    val intent = Intent(this, MetadataConfirmActivity::class.java)
                     intent.putStringArrayListExtra("SELECTED_FILES", ArrayList(selectedPaths))
                     startActivity(intent)
                 }
@@ -726,6 +739,8 @@ class FileBrowserActivity : AppCompatActivity() {
             val arrowView: ImageView = view.findViewById(R.id.item_arrow)
             val previewImage: ImageView = view.findViewById(R.id.item_preview)
             val fileTypeBadge: TextView = view.findViewById(R.id.item_type_badge)
+            val clickZoneLeft: View = view.findViewById(R.id.click_zone_left)
+            val clickZoneRight: View = view.findViewById(R.id.click_zone_right)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FileViewHolder {
@@ -797,7 +812,7 @@ class FileBrowserActivity : AppCompatActivity() {
                 holder.arrowView.visibility = View.GONE
 
                 if (type == ResolvedFileType.IMAGE) {
-                    bindImagePreview(holder, targetFile)
+                    bindImagePreview(holder, targetFile, item)
                 }
 
                 holder.nameTv.setTextColor(
@@ -809,9 +824,23 @@ class FileBrowserActivity : AppCompatActivity() {
                 )
             }
 
-            holder.itemView.setOnClickListener {
+            // Left 50%: Open Preview
+            holder.clickZoneLeft.setOnClickListener {
                 onItemClick(item)
             }
+
+            // Right 50%: Toggle Selection
+            holder.clickZoneRight.setOnClickListener {
+                val adapterPosition = holder.adapterPosition
+                if (adapterPosition != RecyclerView.NO_POSITION) {
+                    onItemSelected(item, !item.isSelected)
+                    notifyItemChanged(adapterPosition)
+                }
+            }
+
+            // Disable original item click to avoid conflicts
+            holder.itemView.setOnClickListener(null)
+            holder.iconView.setOnClickListener(null)
 
             holder.itemView.setOnLongClickListener {
                 onItemLongClick(item, holder.itemView)
@@ -819,7 +848,7 @@ class FileBrowserActivity : AppCompatActivity() {
             }
         }
 
-        private fun bindImagePreview(holder: FileViewHolder, imageFile: File) {
+        private fun bindImagePreview(holder: FileViewHolder, imageFile: File, item: StorageItem) {
             val imagePath = imageFile.absolutePath
             holder.previewImage.tag = imagePath
 
@@ -843,6 +872,7 @@ class FileBrowserActivity : AppCompatActivity() {
                 if (holder.previewImage.tag == imagePath) {
                     if (bitmap != null) {
                         holder.previewImage.setImageBitmap(bitmap)
+                        // Preview handled by split zone
                         holder.previewImage.visibility = View.VISIBLE
                         holder.iconView.visibility = View.GONE
                     } else {
