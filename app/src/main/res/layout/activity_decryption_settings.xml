@@ -77,11 +77,53 @@
 
     </com.google.android.material.textfield.TextInputLayout>
 
+    <!-- View Only Option -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:orientation="horizontal"
+        android:gravity="top"
+        android:paddingHorizontal="4dp">
+
+        <CheckBox
+            android:id="@+id/check_ephemeral"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="-4dp"
+            android:buttonTint="#54F0A3" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="View Only"
+                android:textColor="#54F0A3"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:alpha="0.75"
+                android:text="Decrypt and open the file for temporary viewing. The file will not be saved to your device."
+                android:textColor="#A2B5C8"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_start_decrypt"
         android:layout_width="match_parent"
         android:layout_height="52dp"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="32dp"
         android:text="Start Decryption"
         android:textColor="#000000"
         android:textSize="16sp"

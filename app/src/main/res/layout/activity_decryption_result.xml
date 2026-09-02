@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    android:fitsSystemWindows="true"
+    android:clipToPadding="false"
+    android:paddingStart="24dp"
+    android:paddingTop="32dp"
+    android:paddingEnd="24dp"
+    android:paddingBottom="0dp">
+
+    <TextView
+        android:id="@+id/lblResultTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="8dp"
+        android:text="DECRYPTED OUTPUT"
+        android:textColor="#00FF00"
+        android:textSize="24sp"
+        android:textStyle="bold" />
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/decryptedOutputScrollView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@id/btnNeonExit"
+        android:layout_below="@id/lblResultTitle"
+        android:layout_marginTop="22dp"
+        android:layout_marginBottom="22dp"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:overScrollMode="ifContentScrolls"
+        android:scrollbars="vertical">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/green_border_box"
+            android:paddingStart="16dp"
+            android:paddingTop="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="16dp">
+
+            <EditText
+                android:id="@+id/txtDecryptedOutput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@null"
+                android:gravity="top|start"
+                android:inputType="textMultiLine"
+                android:minLines="12"
+                android:nestedScrollingEnabled="false"
+                android:overScrollMode="never"
+                android:padding="0dp"
+                android:scrollbars="none"
+                android:textAlignment="viewStart"
+                android:textColor="#FFFFFF"
+                android:textColorHighlight="#334455"
+                android:textCursorDrawable="@null"
+                android:textSize="16sp" />
+
+        </FrameLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+    <Button
+        android:id="@+id/btnNeonExit"
+        android:layout_width="220dp"
+        android:layout_height="44dp"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="56dp"
+        android:background="@drawable/red_rounded_exit_button"
+        android:backgroundTint="#FF0000"
+        android:text="SAFE EXIT"
+        android:textColor="#000000"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+</RelativeLayout>

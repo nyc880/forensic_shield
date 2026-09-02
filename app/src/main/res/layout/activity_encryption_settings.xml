@@ -4,24 +4,25 @@
     android:id="@+id/root_encryption_settings"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#121212"
+    android:background="#0A0E14"
     android:clickable="true"
     android:focusable="true"
     android:focusableInTouchMode="true"
     android:fitsSystemWindows="true"
-    android:paddingTop="12dp"
-    android:paddingBottom="12dp">
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
 
     <ScrollView
         android:id="@+id/scroll_content"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_above="@id/btn_start"
+        android:layout_above="@+id/btn_start"
         android:clipToPadding="false"
         android:fillViewport="true"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:paddingBottom="12dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="16dp"
         android:scrollbars="none">
 
         <LinearLayout
@@ -29,262 +30,235 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <LinearLayout
-                android:id="@+id/container_inputs"
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:layout_marginBottom="8dp"
+                android:letterSpacing="0.08"
+                android:text="PASSWORD"
+                android:textColor="#E0E0E0"
+                android:textSize="11sp"
+                android:textStyle="bold" />
 
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/til_password"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:hint="Enter Password"
-                    android:textColorHint="@color/hint_color_selector"
-                    app:boxBackgroundMode="outline"
-                    app:boxStrokeColor="@color/password_box_stroke"
-                    app:boxStrokeWidth="2.5dp"
-                    app:boxStrokeWidthFocused="2.5dp"
-                    app:hintTextColor="@color/hint_color_selector"
-                    app:passwordToggleEnabled="false">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_password"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textPassword"
-                        android:padding="12dp"
-                        android:textColor="#FF9800"
-                        android:textColorHint="#FF9800"
-                        android:textSize="15sp" />
-
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/til_confirm_password"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:hint="Confirm Password"
-                    android:textColorHint="@color/hint_color_selector"
-                    app:boxBackgroundMode="outline"
-                    app:boxStrokeColor="@color/password_box_stroke"
-                    app:boxStrokeWidth="2.5dp"
-                    app:boxStrokeWidthFocused="2.5dp"
-                    app:hintTextColor="@color/hint_color_selector"
-                    app:passwordToggleEnabled="false">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_confirm_password"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textPassword"
-                        android:padding="12dp"
-                        android:textColor="#FF9800"
-                        android:textColorHint="#FF9800"
-                        android:textSize="15sp" />
-
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <CheckBox
-                    android:id="@+id/cb_show_password"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="end"
-                    android:layout_marginTop="2dp"
-                    android:buttonTint="#00FFFF"
-                    android:text="Show Passwords"
-                    android:textColor="#FFFFFF"
-                    android:textSize="13sp" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="8dp"
-                    android:layout_marginBottom="8dp"
-                    android:background="#1AFFFFFF" />
-
-            </LinearLayout>
-
-            <LinearLayout
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/til_password"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:hint="Enter Password"
+                android:textColorHint="#FF9800"
+                app:boxBackgroundMode="outline"
+                app:boxCornerRadiusBottomEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusTopStart="12dp"
+                app:boxStrokeColor="#FF9800"
+                app:boxStrokeWidth="2dp"
+                app:boxStrokeWidthFocused="3dp"
+                app:boxBackgroundColor="#33FF9800"
+                app:endIconMode="password_toggle"
+                app:endIconTint="#00FFFF"
+                app:hintEnabled="true"
+                app:hintTextColor="#FF9800"
+                app:passwordToggleEnabled="false">
 
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/cb_just_files"
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_password"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Just Files"
+                    android:inputType="textPassword"
+                    android:padding="16dp"
                     android:textColor="#FFFFFF"
-                    android:textSize="15sp"
-                    app:buttonTint="#00FFFF" />
+                    android:textColorHint="#80FF9800"
+                    android:textSize="15sp" />
 
-                <TextView
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="16dp"
+                android:background="#1E2A3A" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:letterSpacing="0.08"
+                android:text="ENCRYPTION LAYER"
+                android:textColor="#E0E0E0"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/til_engine_dropdown"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:boxBackgroundColor="#33FF1744"
+                app:boxCornerRadiusBottomEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusTopStart="12dp"
+                app:boxStrokeColor="#FF1744"
+                app:boxStrokeWidth="2dp"
+                app:boxStrokeWidthFocused="3dp"
+                app:endIconMode="dropdown_menu"
+                app:endIconTint="#FF1744"
+                app:hintEnabled="false">
+
+                <AutoCompleteTextView
+                    android:id="@+id/dropdown_engine"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="32dp"
-                    android:text="Encrypts each selected file individually."
-                    android:textColor="#AAAAAA"
-                    android:textSize="11sp" />
+                    android:fontFamily="monospace"
+                    android:inputType="none"
+                    android:padding="14dp"
+                    android:text="max encryption (AES-256 + CHACHA20)"
+                    android:textColor="#FF1744"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="6dp"
-                    android:layout_marginBottom="6dp"
-                    android:background="#1AFFFFFF" />
+            </com.google.android.material.textfield.TextInputLayout>
 
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/cb_just_zip"
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="14dp"
+                android:background="#1E2A3A" />
+
+            <com.google.android.material.checkbox.MaterialCheckBox
+                android:id="@+id/cb_dual_password"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Double Password"
+                android:textColor="#9C27B0"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                app:buttonTint="#9C27B0" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="32dp"
+                android:layout_marginTop="-6dp"
+                android:layout_marginBottom="4dp"
+                android:text="File will be encrypted twice with two different passwords. Both are required for decryption."
+                android:textColor="#CE93D8"
+                android:textSize="11sp" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/til_second_password"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginEnd="8dp"
+                android:hint="Enter Second Password"
+                android:visibility="gone"
+                app:boxBackgroundColor="#332E0A4B"
+                app:boxCornerRadiusBottomEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusTopStart="12dp"
+                app:boxStrokeColor="#9C27B0"
+                app:boxStrokeWidth="2dp"
+                app:boxStrokeWidthFocused="3dp"
+                app:endIconMode="password_toggle"
+                app:endIconTint="#CE93D8"
+                app:hintEnabled="true"
+                app:hintTextColor="#CE93D8">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_second_password"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Just ZIP"
+                    android:inputType="textPassword"
+                    android:padding="16dp"
                     android:textColor="#FFFFFF"
-                    android:textSize="15sp"
-                    app:buttonTint="#00FFFF" />
+                    android:textColorHint="#80CE93D8"
+                    android:textSize="15sp" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="32dp"
-                    android:text="Packs all files into one encrypted ZIP."
-                    android:textColor="#AAAAAA"
-                    android:textSize="11sp" />
+            </com.google.android.material.textfield.TextInputLayout>
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="6dp"
-                    android:layout_marginBottom="6dp"
-                    android:background="#1AFFFFFF" />
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="14dp"
+                android:layout_marginBottom="12dp"
+                android:background="#1E2A3A" />
 
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/cb_files_and_zip"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Files &amp; ZIP"
-                    android:textColor="#FFFFFF"
-                    android:textSize="15sp"
-                    app:buttonTint="#00FFFF" />
+            <com.google.android.material.checkbox.MaterialCheckBox
+                android:id="@+id/cb_just_zip"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="ZIP"
+                android:textColor="#00BCD4"
+                android:textSize="14sp"
+                app:buttonTint="#00BCD4" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="32dp"
-                    android:text="Individual encryption then ZIP packaging."
-                    android:textColor="#AAAAAA"
-                    android:textSize="11sp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="32dp"
+                android:layout_marginTop="-6dp"
+                android:layout_marginBottom="8dp"
+                android:text="Pack all files into a single ZIP before encryption."
+                android:textColor="#80DEEA"
+                android:textSize="11sp" />
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="6dp"
-                    android:layout_marginBottom="6dp"
-                    android:background="#1AFFFFFF" />
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="8dp"
+                android:background="#1E2A3A" />
 
-                <LinearLayout
-                    android:id="@+id/container_zip_options"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:orientation="vertical"
-                    android:paddingTop="6dp"
-                    android:paddingBottom="6dp"
-                    android:visibility="gone">
+            <com.google.android.material.checkbox.MaterialCheckBox
+                android:id="@+id/cb_delete_after"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Delete After Encryption"
+                android:textColor="#FF1744"
+                android:textSize="14sp"
+                app:buttonTint="#FF1744" />
 
-                    <com.google.android.material.checkbox.MaterialCheckBox
-                        android:id="@+id/cb_double_zip"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Double ZIP"
-                        android:textColor="#FF00FF"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        app:buttonTint="#FF00FF" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="32dp"
+                android:layout_marginTop="-6dp"
+                android:layout_marginBottom="4dp"
+                android:text="Securely overwrite and delete original files after encryption."
+                android:textColor="#FF8A80"
+                android:textSize="11sp" />
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="32dp"
-                        android:layout_marginTop="2dp"
-                        android:text="Wraps the package in a second encryption layer."
-                        android:textColor="#D1C4E9"
-                        android:textSize="11sp" />
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/til_second_zip_password"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:hint="optional password for second zip"
-                        android:textColorHint="@color/second_password_hint_color_selector"
-                        android:visibility="gone"
-                        app:boxBackgroundMode="outline"
-                        app:boxStrokeColor="@color/second_password_box_stroke"
-                        app:boxStrokeWidth="2.5dp"
-                        app:boxStrokeWidthFocused="2.5dp"
-                        app:hintTextColor="@color/second_password_hint_color_selector"
-                        app:passwordToggleEnabled="false">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/et_second_zip_password"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="textPassword"
-                            android:padding="12dp"
-                            android:textColor="#CE93D8"
-                            android:textColorHint="#CE93D8"
-                            android:textSize="15sp" />
-
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="6dp"
-                    android:layout_marginBottom="6dp"
-                    android:background="#1AFFFFFF" />
-
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/cb_delete_after"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Delete After Encryption"
-                    android:textColor="#FF3333"
-                    android:textSize="15sp"
-                    app:buttonTint="#FF3333" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="20dp" />
-
-            </LinearLayout>
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="20dp" />
 
         </LinearLayout>
-
     </ScrollView>
 
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_start"
         android:layout_width="match_parent"
-        android:layout_height="50dp"
+        android:layout_height="56dp"
         android:layout_alignParentBottom="true"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="12dp"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="8dp"
-        android:text="START"
+        android:layout_marginBottom="16dp"
+        android:elevation="4dp"
+        android:letterSpacing="0.05"
+        android:text="START ENCRYPTION"
         android:textColor="#000000"
         android:textSize="16sp"
         android:textStyle="bold"
-        app:backgroundTint="#00FF00"
-        app:cornerRadius="6dp" />
+        app:backgroundTint="#00E676"
+        app:cornerRadius="12dp" />
 
 </RelativeLayout>

@@ -7,6 +7,8 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import android.util.Base64
 import java.nio.ByteBuffer
+import java.nio.CharBuffer
+import java.nio.charset.StandardCharsets
 import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.Mac
@@ -72,15 +74,13 @@ class EncryptionManager {
 
         /**
          * Argon2id memory cost in KB
-         * 32MB = 32768KB - Safe for 2GB RAM devices
-         * On 4GB+ devices, consider increasing to 65536 (64MB)
+         * 256MB = 262144KB - Maximum security configuration for high-end memory allocation
          *
          * Memory allocation strategy:
-         * - 2GB RAM device: 32MB (conservative, ~1.5% of total RAM)
-         * - 4GB RAM device: 64MB (recommended)
-         * - 8GB+ RAM device: 128MB (maximum security)
+         * - Mid-range device: 32MB - 64MB
+         * - High-end / Maximum Security device: 256MB (262144KB)
          */
-        private const val ARGON2_MEMORY_KB = 32768
+        private const val ARGON2_MEMORY_KB = 262144
 
         /**
          * Argon2id parallelism (threads)
@@ -180,7 +180,7 @@ class EncryptionManager {
 
         /** Public encrypted files get an opaque, filesystem-safe random name */
         private const val ENCRYPTED_FILENAME_PREFIX = ""
-        private const val ENCRYPTED_FILENAME_EXTENSION = ".enc"
+        private const val ENCRYPTED_FILENAME_EXTENSION = ".max.enc"
 
         /** Number of random bytes used for the visible encrypted filename */
         private const val ENCRYPTED_FILENAME_RANDOM_BYTES = 32

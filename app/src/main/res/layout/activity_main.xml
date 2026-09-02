@@ -23,7 +23,7 @@
         android:fontFamily="monospace"
         android:gravity="center"
         android:letterSpacing="0.01"
-        android:text="250 Years of Liberty , 250 Years of Privacy"
+        android:text="250 years of freedom,250 years of privacy"
         android:textColor="#C9A85F"
         android:textSize="13sp"
         android:textStyle="bold"

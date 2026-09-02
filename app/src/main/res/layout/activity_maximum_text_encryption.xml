@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingStart="24dp"
+        android:paddingTop="16dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="24dp">
+
+        <!-- Top dynamic mode selector: kept similar to activity_text_encryption.xml -->
+        <RadioGroup
+            android:id="@+id/rg_encryption_tier"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/rb_medium_short"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:buttonTint="#00FF66"
+                android:fontFamily="monospace"
+                android:text="Medium Short Encrypt"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp" />
+
+            <RadioButton
+                android:id="@+id/rb_maximum"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:buttonTint="#00FF66"
+                android:checked="true"
+                android:fontFamily="monospace"
+                android:text="Maximum Encrypt"
+                android:textColor="#00FF66"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </RadioGroup>
+
+        <!-- Maximum internal operation selector -->
+        <RadioGroup
+            android:id="@+id/rg_maximum_action"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="14dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/rb_max_encrypt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="26dp"
+                android:buttonTint="#00FF66"
+                android:checked="true"
+                android:fontFamily="monospace"
+                android:text="ENCRYPT"
+                android:textColor="#00FF66"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <RadioButton
+                android:id="@+id/rb_max_decrypt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:buttonTint="#00FF66"
+                android:fontFamily="monospace"
+                android:text="DECRYPT"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </RadioGroup>
+
+        <!-- Main text box: copied structure from Medium page, redesigned for Maximum mode -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_main_text_box"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="4dp"
+            android:layout_weight="1"
+            app:cardBackgroundColor="#06111F"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeColor="#00FF66"
+            app:strokeWidth="1.4dp">
+
+            <EditText
+                android:id="@+id/main_text_box"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@null"
+                android:fontFamily="monospace"
+                android:gravity="top|start"
+                android:hint="Enter text for maximum encryption..."
+                android:inputType="textMultiLine"
+                android:padding="16dp"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#4F8F70"
+                android:textSize="15sp" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Only Paste and Clear remain in Maximum Encrypt mode -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="14dp"
+            android:gravity="end|center_vertical"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_clear"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_marginEnd="8dp"
+                android:backgroundTint="#FFFFFF"
+                android:fontFamily="monospace"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="CLEAR"
+                android:textColor="#071019"
+                android:textSize="11sp"
+                app:cornerRadius="8dp" />
+
+            <Button
+                android:id="@+id/btn_paste"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:backgroundTint="#FFC107"
+                android:fontFamily="monospace"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="PASTE"
+                android:textColor="#071019"
+                android:textSize="11sp"
+                app:cornerRadius="8dp" />
+        </LinearLayout>
+
+        <!-- Cyber green password field -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/til_password"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="4dp"
+            android:layout_marginBottom="18dp"
+            android:hint="PASSWORD"
+            android:textColorHint="#00FF66"
+            app:boxBackgroundColor="#000000"
+            app:boxBackgroundMode="outline"
+            app:boxStrokeColor="#00FF66"
+            app:boxStrokeWidth="2dp"
+            app:boxStrokeWidthFocused="2dp"
+            app:hintTextColor="#00FF66"
+            app:passwordToggleEnabled="true"
+            app:passwordToggleTint="#00FF66">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/input_password"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:inputType="textPassword"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Only Encrypt button remains at bottom center -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/btn_encrypt"
+            android:layout_width="220dp"
+            android:layout_height="56dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="6dp"
+            android:clickable="true"
+            android:focusable="true"
+            app:cardBackgroundColor="#0A361B"
+            app:cardCornerRadius="16dp"
+            app:strokeColor="#00FF66"
+            app:strokeWidth="1.4dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:text="🔒"
+                    android:textSize="22sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="monospace"
+                    android:text="ENCRYPT"
+                    android:textColor="#00FF66"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+</LinearLayout>

@@ -1,14 +1,14 @@
 package com.example.lock
 
-import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
-import android.text.InputType
 import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
 import android.widget.Button
-import android.widget.CheckBox
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.textfield.TextInputEditText
@@ -17,31 +17,30 @@ import com.google.android.material.textfield.TextInputLayout
 class EncryptionSettingsActivity : AppCompatActivity() {
 
     private lateinit var rootView: View
-
     private lateinit var tilPassword: TextInputLayout
-    private lateinit var tilConfirmPassword: TextInputLayout
-    private lateinit var tilSecondZipPassword: TextInputLayout
+    private lateinit var tilEngineDropdown: TextInputLayout
+    private lateinit var tilSecondPassword: TextInputLayout
 
     private lateinit var passwordInput: TextInputEditText
-    private lateinit var confirmPasswordInput: TextInputEditText
-    private lateinit var secondZipPasswordInput: TextInputEditText
+    private lateinit var dropdownEngine: AutoCompleteTextView
+    private lateinit var secondPasswordInput: TextInputEditText
 
-    private lateinit var showPasswordCheckBox: CheckBox
-    private lateinit var deleteCheckBox: CheckBox
+    private lateinit var dualPasswordCheckBox: MaterialCheckBox
+    private lateinit var justZipCheckBox: MaterialCheckBox
+    private lateinit var deleteCheckBox: MaterialCheckBox
     private lateinit var startBtn: Button
 
-    private lateinit var cbJustFiles: MaterialCheckBox
-    private lateinit var cbJustZip: MaterialCheckBox
-    private lateinit var cbFilesAndZip: MaterialCheckBox
-    private lateinit var cbDoubleZip: MaterialCheckBox
+    enum class EngineType(val display: String, val colorHex: String, val bgHex: String) {
+        MAX("max encryption (AES-256 + CHACHA20)", "#FF1744", "#26FF1744"),
+        MEDIUM("medium encryption (AES-256)", "#FF9800", "#26FF9800"),
+        EASY("easy encryption (CHACHA20)", "#64B5F6", "#2664B5F6")
+    }
 
-    private lateinit var zipOptionsContainer: View
+    private var selectedEngine = EngineType.MAX
 
-    private fun <T : View> bindId(idName: String): T {
+    private fun <T : View> bind(idName: String): T {
         val id = resources.getIdentifier(idName, "id", packageName)
-        if (id == 0) {
-            throw IllegalStateException("Missing view id: $idName")
-        }
+        if (id == 0) throw IllegalStateException("Missing id: $idName")
         return findViewById(id)
     }
 
@@ -51,179 +50,106 @@ class EncryptionSettingsActivity : AppCompatActivity() {
 
         rootView = findViewById(android.R.id.content)
 
-        tilPassword = bindId("til_password")
-        tilConfirmPassword = bindId("til_confirm_password")
-        tilSecondZipPassword = bindId("til_second_zip_password")
+        tilPassword = bind("til_password")
+        tilEngineDropdown = bind("til_engine_dropdown")
+        tilSecondPassword = bind("til_second_password")
 
-        passwordInput = bindId("et_password")
-        confirmPasswordInput = bindId("et_confirm_password")
-        secondZipPasswordInput = bindId("et_second_zip_password")
+        passwordInput = bind("et_password")
+        dropdownEngine = bind("dropdown_engine")
+        secondPasswordInput = bind("et_second_password")
 
-        showPasswordCheckBox = bindId("cb_show_password")
-        deleteCheckBox = bindId("cb_delete_after")
-        startBtn = bindId("btn_start")
-
-        cbJustFiles = bindId("cb_just_files")
-        cbJustZip = bindId("cb_just_zip")
-        cbFilesAndZip = bindId("cb_files_and_zip")
-        cbDoubleZip = bindId("cb_double_zip")
-
-        zipOptionsContainer = bindId("container_zip_options")
+        dualPasswordCheckBox = bind("cb_dual_password")
+        justZipCheckBox = bind("cb_just_zip")
+        deleteCheckBox = bind("cb_delete_after")
+        startBtn = bind("btn_start")
 
         val selectedFiles = intent.getStringArrayListExtra("SELECTED_FILES") ?: arrayListOf()
 
-        setupDefaultSelection()
-        setupSingleChoiceMode()
-        setupDoubleZipToggle()
-        setupShowPasswordToggle()
+        setupEngineDropdown()
+        setupDualPasswordToggle()
         setupHideKeyboardOnBackgroundTap()
-        clearErrorsOnInput()
 
         startBtn.setOnClickListener {
             hideKeyboard()
-
             val password = passwordInput.text?.toString()?.trim().orEmpty()
-            val confirmPassword = confirmPasswordInput.text?.toString()?.trim().orEmpty()
-            val secondZipPassword = secondZipPasswordInput.text?.toString()?.trim().orEmpty()
+            val secondPassword = secondPasswordInput.text?.toString()?.trim().orEmpty()
 
             tilPassword.error = null
-            tilConfirmPassword.error = null
-            tilSecondZipPassword.error = null
+            tilSecondPassword.error = null
 
             if (password.isEmpty()) {
                 tilPassword.error = "Please enter password"
                 passwordInput.requestFocus()
                 return@setOnClickListener
             }
-
-            if (confirmPassword.isEmpty()) {
-                tilConfirmPassword.error = "Please confirm password"
-                confirmPasswordInput.requestFocus()
+            if (password.length < 4) {
+                tilPassword.error = "Password too short (min 4)"
                 return@setOnClickListener
             }
 
-            if (password != confirmPassword) {
-                tilConfirmPassword.error = "Passwords do not match"
-                confirmPasswordInput.requestFocus()
-                return@setOnClickListener
+            if (dualPasswordCheckBox.isChecked) {
+                if (secondPassword.isEmpty()) {
+                    tilSecondPassword.error = "Please enter second password"
+                    secondPasswordInput.requestFocus()
+                    return@setOnClickListener
+                }
+                if (secondPassword == password) {
+                    tilSecondPassword.error = "Second password must be different"
+                    return@setOnClickListener
+                }
+                if (secondPassword.length < 4) {
+                    tilSecondPassword.error = "Second password too short"
+                    return@setOnClickListener
+                }
             }
 
-            val encryptionType = when {
-                cbDoubleZip.isChecked && cbJustZip.isChecked -> "DOUBLE_ZIP_JUST_ZIP"
-                cbDoubleZip.isChecked && cbFilesAndZip.isChecked -> "DOUBLE_ZIP_FILES_AND_ZIP"
-                cbFilesAndZip.isChecked -> "ZIP_FILES"
-                cbJustZip.isChecked -> "JUST_ZIP"
-                else -> "JUST_FILES"
-            }
+            val encType = if (justZipCheckBox.isChecked) "JUST_ZIP" else "JUST_FILES"
 
             val intent = Intent(this, ProcessingActivity::class.java)
             intent.putExtra("MODE", "ENCRYPT")
             intent.putStringArrayListExtra("FILES", selectedFiles)
             intent.putExtra("PASSWORD", password)
-            intent.putExtra("SECOND_ZIP_PASSWORD", secondZipPassword)
-            intent.putExtra("ENC_TYPE", encryptionType)
+            intent.putExtra("SECOND_PASSWORD", if (dualPasswordCheckBox.isChecked) secondPassword else "")
+            intent.putExtra("IS_DUAL_PASSWORD", dualPasswordCheckBox.isChecked)
+            intent.putExtra("ENGINE_TYPE", selectedEngine.name)
+            intent.putExtra("ENC_TYPE", encType)
             intent.putExtra("DELETE_AFTER", deleteCheckBox.isChecked)
             startActivity(intent)
             finish()
         }
     }
 
-    private fun setupDefaultSelection() {
-        cbJustFiles.isChecked = true
-        cbJustZip.isChecked = false
-        cbFilesAndZip.isChecked = false
-        cbDoubleZip.isChecked = false
-        updateZipOptionsVisibility()
-        updateSecondZipPasswordVisibility()
+    private fun setupEngineDropdown() {
+        val items = EngineType.values().map { it.display }
+        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, items)
+        dropdownEngine.setAdapter(adapter)
+
+        dropdownEngine.setText(selectedEngine.display, false)
+        applyEngineColor(selectedEngine)
+
+        dropdownEngine.setOnItemClickListener { _, _, position, _ ->
+            selectedEngine = EngineType.values()[position]
+            applyEngineColor(selectedEngine)
+        }
     }
 
-    private fun setupSingleChoiceMode() {
-        cbJustFiles.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                cbJustZip.isChecked = false
-                cbFilesAndZip.isChecked = false
-            } else if (!cbJustZip.isChecked && !cbFilesAndZip.isChecked) {
-                cbJustFiles.isChecked = true
+    private fun applyEngineColor(type: EngineType) {
+        val color = Color.parseColor(type.colorHex)
+        val bgColor = Color.parseColor(type.bgHex)
+
+        dropdownEngine.setTextColor(color)
+        tilEngineDropdown.boxStrokeColor = color
+        tilEngineDropdown.setBoxBackgroundColorStateList(android.content.res.ColorStateList.valueOf(bgColor))
+        tilEngineDropdown.setEndIconTintList(android.content.res.ColorStateList.valueOf(color))
+    }
+
+    private fun setupDualPasswordToggle() {
+        dualPasswordCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            tilSecondPassword.visibility = if (isChecked) View.VISIBLE else View.GONE
+            if (!isChecked) {
+                secondPasswordInput.text?.clear()
+                tilSecondPassword.error = null
             }
-            updateZipOptionsVisibility()
-        }
-
-        cbJustZip.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                cbJustFiles.isChecked = false
-                cbFilesAndZip.isChecked = false
-            } else if (!cbJustFiles.isChecked && !cbFilesAndZip.isChecked) {
-                cbJustZip.isChecked = true
-            }
-            updateZipOptionsVisibility()
-        }
-
-        cbFilesAndZip.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                cbJustFiles.isChecked = false
-                cbJustZip.isChecked = false
-            } else if (!cbJustFiles.isChecked && !cbJustZip.isChecked) {
-                cbFilesAndZip.isChecked = true
-            }
-            updateZipOptionsVisibility()
-        }
-    }
-
-    private fun setupDoubleZipToggle() {
-        cbDoubleZip.setOnCheckedChangeListener { _, _ ->
-            updateSecondZipPasswordVisibility()
-        }
-    }
-
-    private fun updateZipOptionsVisibility() {
-        val shouldShow = cbJustZip.isChecked || cbFilesAndZip.isChecked
-        zipOptionsContainer.visibility = if (shouldShow) View.VISIBLE else View.GONE
-
-        if (!shouldShow) {
-            cbDoubleZip.isChecked = false
-        }
-
-        updateSecondZipPasswordVisibility()
-    }
-
-    private fun updateSecondZipPasswordVisibility() {
-        val shouldShow = zipOptionsContainer.visibility == View.VISIBLE && cbDoubleZip.isChecked
-        tilSecondZipPassword.visibility = if (shouldShow) View.VISIBLE else View.GONE
-
-        if (!shouldShow) {
-            secondZipPasswordInput.text?.clear()
-        }
-    }
-
-    private fun setupShowPasswordToggle() {
-        showPasswordCheckBox.setOnCheckedChangeListener { _, isChecked ->
-            val inputType = if (isChecked) {
-                InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
-            } else {
-                InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            }
-
-            passwordInput.inputType = inputType
-            confirmPasswordInput.inputType = inputType
-            secondZipPasswordInput.inputType = inputType
-
-            passwordInput.setSelection(passwordInput.text?.length ?: 0)
-            confirmPasswordInput.setSelection(confirmPasswordInput.text?.length ?: 0)
-            secondZipPasswordInput.setSelection(secondZipPasswordInput.text?.length ?: 0)
-        }
-    }
-
-    private fun clearErrorsOnInput() {
-        passwordInput.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) tilPassword.error = null
-        }
-
-        confirmPasswordInput.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) tilConfirmPassword.error = null
-        }
-
-        secondZipPasswordInput.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) tilSecondZipPassword.error = null
         }
     }
 
@@ -238,7 +164,7 @@ class EncryptionSettingsActivity : AppCompatActivity() {
     }
 
     private fun hideKeyboard() {
-        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager
         val view = currentFocus ?: rootView
         imm?.hideSoftInputFromWindow(view.windowToken, 0)
     }

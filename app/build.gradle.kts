@@ -27,7 +27,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // این بخش برای نمایش صحیح لوگوهای SVG (Vector Drawable) ضروری است
         vectorDrawables {
             useSupportLibrary = true
         }

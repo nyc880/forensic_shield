@@ -18,21 +18,42 @@
         android:paddingTop="16dp"
         android:paddingBottom="16dp">
 
-        <TextView
+        <RadioGroup
+            android:id="@+id/rg_encryption_tier"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:fontFamily="monospace"
+            android:orientation="horizontal"
             android:gravity="center"
-            android:text="SECURE TEXT ENCRYPTION"
-            android:textColor="#C9A85F"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:layout_marginBottom="12dp">
+
+            <RadioButton
+                android:id="@+id/rb_medium_short"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Medium Short Encrypt"
+                android:textColor="#FFFFFF"
+                android:buttonTint="#C9A85F"
+                android:fontFamily="monospace"
+                android:textSize="11sp"
+                android:checked="true"
+                android:layout_marginEnd="16dp" />
+
+            <RadioButton
+                android:id="@+id/rb_maximum"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Maximum Encrypt"
+                android:textColor="#FFFFFF"
+                android:buttonTint="#C9A85F"
+                android:fontFamily="monospace"
+                android:textSize="11sp" />
+        </RadioGroup>
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
+            android:layout_marginTop="4dp"
             app:cardBackgroundColor="#0F2537"
             app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
@@ -59,42 +80,101 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="16dp"
-            android:gravity="end"
+            android:gravity="center_vertical"
             android:orientation="horizontal">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btn_share"
+                android:layout_width="85dp"
+                android:layout_height="36dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardBackgroundColor="#0088FF"
+                app:cardCornerRadius="18dp"
+                app:strokeColor="#C9A85F"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="📤"
+                        android:textSize="13sp"
+                        android:layout_marginEnd="4dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:text="SHARE"
+                        android:textColor="#FFFFFF"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
 
             <Button
                 android:id="@+id/btn_clear"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
-                android:layout_marginEnd="8dp"
-                android:backgroundTint="#212529"
+                android:layout_marginEnd="6dp"
+                android:backgroundTint="#FFFFFF"
                 android:fontFamily="monospace"
                 android:text="CLEAR"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp"
+                android:textColor="#071019"
+                android:textSize="11sp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 app:cornerRadius="8dp" />
 
             <Button
                 android:id="@+id/btn_paste"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
-                android:layout_marginEnd="8dp"
-                android:backgroundTint="#0A361B"
+                android:layout_marginEnd="6dp"
+                android:backgroundTint="#FFC107"
                 android:fontFamily="monospace"
                 android:text="PASTE"
-                android:textColor="#C9A85F"
-                android:textSize="12sp"
+                android:textColor="#071019"
+                android:textSize="11sp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 app:cornerRadius="8dp" />
 
             <Button
                 android:id="@+id/btn_copy"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
-                android:backgroundTint="#0F2537"
+                android:backgroundTint="#D32F2F"
                 android:fontFamily="monospace"
                 android:text="COPY"
-                android:textColor="#C9A85F"
-                android:textSize="12sp"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 app:cornerRadius="8dp" />
         </LinearLayout>
 
@@ -103,8 +183,11 @@
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            android:hint="Encryption Key"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:hint="PASSWORD"
             android:textColorHint="#C9A85F"
             app:boxBackgroundMode="outline"
             app:boxStrokeColor="#C9A85F"
@@ -123,30 +206,48 @@
                 android:textSize="15sp" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/til_confirm_password"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:hint="Confirm Key"
-            android:textColorHint="#C9A85F"
-            app:boxBackgroundMode="outline"
-            app:boxStrokeColor="#C9A85F"
-            app:boxStrokeWidth="2dp"
-            app:boxStrokeWidthFocused="2dp"
-            app:hintTextColor="#C9A85F"
-            app:passwordToggleEnabled="true"
-            app:passwordToggleTint="#C9A85F">
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/btn_import"
+            android:layout_width="140dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="8dp"
+            android:clickable="true"
+            android:focusable="true"
+            app:cardBackgroundColor="#E65100"
+            app:cardCornerRadius="8dp"
+            app:strokeColor="#C9A85F"
+            app:strokeWidth="1dp">
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/input_password_confirm"
-                android:layout_width="match_parent"
+            <LinearLayout
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:inputType="textPassword"
-                android:textColor="#FFFFFF"
-                android:textSize="15sp" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📥"
+                    android:textSize="14sp"
+                    android:layout_marginEnd="6dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="monospace"
+                    android:text="IMPORT FILE"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="24dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -166,15 +267,29 @@
                 app:strokeColor="#C9A85F"
                 app:strokeWidth="1.2dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
-                    android:fontFamily="monospace"
-                    android:text="ENCRYPT"
-                    android:textColor="#E6C97A"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🔒"
+                        android:textSize="22sp"
+                        android:layout_marginEnd="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:text="ENCRYPT"
+                        android:textColor="#E6C97A"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
@@ -190,15 +305,29 @@
                 app:strokeColor="#C9A85F"
                 app:strokeWidth="1.2dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
-                    android:fontFamily="monospace"
-                    android:text="DECRYPT"
-                    android:textColor="#E6C97A"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🔑"
+                        android:textSize="22sp"
+                        android:layout_marginEnd="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:text="DECRYPT"
+                        android:textColor="#E6C97A"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 

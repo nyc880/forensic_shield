@@ -1,3 +1,29 @@
+/*
+| Variable Name             | Type           | Description                                                        |
+|---------------------------|----------------|--------------------------------------------------------------------|
+| previewTitle              | TextView       | Shows the name of the file being previewed                         |
+| previewDetails            | TextView       | Shows type badge and file size information                         |
+| imagePreview              | ImageView      | View container for rendering decrypted images                      |
+| videoContainer            | View           | Root layout container for video playing interface                  |
+| videoFrame                | FrameLayout    | Frame layout wrapping the video texture view                       |
+| videoTexture              | TextureView    | Texture surface used by MediaPlayer to render video frames         |
+| videoStatus               | TextView       | Status line showing video playback progress                        |
+| videoPlayPause            | Button         | Play/Pause control button for video playback                       |
+| videoSeekBar              | SeekBar        | Track bar showing and controlling video playback position          |
+| audioContainer            | View           | Root layout container for audio playing interface                  |
+| audioTitle                | TextView       | Text field displaying the current audio file name                  |
+| audioStatus               | TextView       | Status line showing audio playback progress                        |
+| audioSeekBar              | SeekBar        | Track bar showing and controlling audio playback position          |
+| audioPlayPause            | Button         | Play/Pause control button for audio playback                       |
+| textPreview               | TextView       | Scrollable text viewer for plaintext files                         |
+| pdfImagePreview           | ImageView      | View displaying rendered first page of a PDF document              |
+| genericIcon               | ImageView      | Fallback icon shown when a file cannot be previewed within the app |
+| genericMessage            | TextView       | Informative message explaining preview limitations                 |
+| openExternalButton        | Button         | Allows opening the decrypted file using external system apps       |
+| selectCheckBox            | CheckBox       | Checkbox to toggle file selection state                            |
+| btnDone                   | Button         | Handles confirmation, strip operations, or safe exit flows         |
+*/
+
 package com.example.lock
 
 import android.content.ActivityNotFoundException
@@ -26,7 +52,7 @@ import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
-import com.example.lock.MetadataConfirmActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import java.io.File
@@ -113,10 +139,24 @@ class FilePreviewActivity : AppCompatActivity() {
 
         previewTitle.text = file.name
         previewDetails.text = "${FileTypeResolver.badge(type, file.extension)} • ${Formatter.formatShortFileSize(this, file.length())}"
-        selectCheckBox.isChecked = selectedPaths.contains(file.absolutePath)
 
-        selectCheckBox.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) selectedPaths.add(file.absolutePath) else selectedPaths.remove(file.absolutePath)
+        if (operationalMode == "VIEW_ONLY") {
+            selectCheckBox.visibility = View.GONE
+
+            btnDone.text = "SAFE EXIT"
+            btnDone.setBackgroundColor(android.graphics.Color.parseColor("#E53935"))
+            btnDone.setTextColor(android.graphics.Color.WHITE)
+
+            onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    SafeExit.performSafeExit(this@FilePreviewActivity)
+                }
+            })
+        } else {
+            selectCheckBox.isChecked = selectedPaths.contains(file.absolutePath)
+            selectCheckBox.setOnCheckedChangeListener { _, isChecked ->
+                if (isChecked) selectedPaths.add(file.absolutePath) else selectedPaths.remove(file.absolutePath)
+            }
         }
 
         openExternalButton.setOnClickListener {
@@ -124,6 +164,10 @@ class FilePreviewActivity : AppCompatActivity() {
         }
 
         btnDone.setOnClickListener {
+            if (operationalMode == "VIEW_ONLY") {
+                SafeExit.performSafeExit(this)
+                return@setOnClickListener
+            }
             if (operationalMode == "METADATA") {
                 val intent = Intent(this, MetadataConfirmActivity::class.java)
                 intent.putStringArrayListExtra("SELECTED_FILES", arrayListOf(file.absolutePath))

@@ -13,6 +13,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.provider.OpenableColumns
 import android.provider.Settings
 import android.text.Editable
 import android.text.InputType
@@ -38,7 +39,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
-import com.example.lock.MetadataConfirmActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -54,6 +54,7 @@ class FileBrowserActivity : AppCompatActivity() {
 
     private val PERMISSION_REQUEST_CODE = 1002
     private val PREVIEW_REQUEST_CODE = 3001
+    private val SYSTEM_PICKER_REQUEST_CODE = 3002
 
     private var currentSortMode = "DATE"
     private var searchJob: Job? = null
@@ -67,6 +68,7 @@ class FileBrowserActivity : AppCompatActivity() {
     private lateinit var emptyState: LinearLayout
     private lateinit var emptyTitle: TextView
     private lateinit var emptyMessage: TextView
+    private lateinit var btnSystemPicker: MaterialButton
     private lateinit var btnSelectAll: MaterialButton
     private lateinit var btnClearSelection: MaterialButton
     private lateinit var btnSortMenu: MaterialButton
@@ -102,6 +104,7 @@ class FileBrowserActivity : AppCompatActivity() {
         emptyState = findViewById(R.id.empty_state)
         emptyTitle = findViewById(R.id.empty_title)
         emptyMessage = findViewById(R.id.empty_message)
+        btnSystemPicker = findViewById(R.id.btn_system_picker)
         btnSelectAll = findViewById(R.id.btn_select_all)
         btnClearSelection = findViewById(R.id.btn_clear_selection)
         btnSortMenu = findViewById(R.id.btn_sort_menu)
@@ -140,6 +143,10 @@ class FileBrowserActivity : AppCompatActivity() {
             showSortMenu()
         }
 
+        btnSystemPicker.setOnClickListener {
+            openSystemFilePicker()
+        }
+
         btnSelectAll.setOnClickListener {
             selectAllVisibleItems()
         }
@@ -163,6 +170,19 @@ class FileBrowserActivity : AppCompatActivity() {
                 }
             }
         })
+    }
+
+    private fun openSystemFilePicker() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+        }
+        try {
+            startActivityForResult(intent, SYSTEM_PICKER_REQUEST_CODE)
+        } catch (_: Exception) {
+            Toast.makeText(this, "System file picker not available", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun showSortMenu() {
@@ -325,6 +345,52 @@ class FileBrowserActivity : AppCompatActivity() {
             return
         }
 
+        if (requestCode == SYSTEM_PICKER_REQUEST_CODE && resultCode == RESULT_OK && data != null) {
+            val uriList = ArrayList<Uri>()
+            val clipData = data.clipData
+            if (clipData != null) {
+                for (i in 0 until clipData.itemCount) {
+                    uriList.add(clipData.getItemAt(i).uri)
+                }
+            } else {
+                data.data?.let { uriList.add(it) }
+            }
+
+            if (uriList.isNotEmpty()) {
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val importedPaths = ArrayList<String>()
+                    for (uri in uriList) {
+                        try {
+                            val fileName = getFileNameFromUri(uri) ?: "file_${System.currentTimeMillis()}"
+                            val cacheFile = File(cacheDir, fileName)
+                            contentResolver.openInputStream(uri)?.use { input ->
+                                cacheFile.outputStream().use { output ->
+                                    input.copyTo(output)
+                                }
+                            }
+                            importedPaths.add(cacheFile.absolutePath)
+                        } catch (_: Exception) {}
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        if (importedPaths.isNotEmpty()) {
+                            selectedPaths.addAll(importedPaths)
+                            for (item in allFilesList) {
+                                item.isSelected = selectedPaths.contains(item.file.absolutePath)
+                            }
+                            for (item in filteredList) {
+                                item.isSelected = selectedPaths.contains(item.file.absolutePath)
+                            }
+                            recyclerView.adapter?.notifyDataSetChanged()
+                            updateSelectionUI()
+                            Toast.makeText(this@FileBrowserActivity, "${importedPaths.size} file(s) imported from system picker", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+            return
+        }
+
         if (requestCode == PREVIEW_REQUEST_CODE && resultCode == RESULT_OK && data != null) {
             val updatedSelections = data.getStringArrayListExtra("updated_selected_files") ?: arrayListOf()
 
@@ -342,6 +408,26 @@ class FileBrowserActivity : AppCompatActivity() {
             recyclerView.adapter?.notifyDataSetChanged()
             updateSelectionUI()
         }
+    }
+
+    private fun getFileNameFromUri(uri: Uri): String? {
+        var name: String? = null
+        val cursor = contentResolver.query(uri, null, null, null, null)
+        cursor?.use {
+            if (it.moveToFirst()) {
+                val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (nameIndex != -1) {
+                    name = it.getString(nameIndex)
+                }
+            }
+        }
+        if (name == null) {
+            name = uri.path?.let { path ->
+                val cut = path.lastIndexOf('/')
+                if (cut != -1) path.substring(cut + 1) else path
+            }
+        }
+        return name
     }
 
     private fun loadDirectory(dir: File) {
@@ -824,12 +910,10 @@ class FileBrowserActivity : AppCompatActivity() {
                 )
             }
 
-            // Left 50%: Open Preview
             holder.clickZoneLeft.setOnClickListener {
                 onItemClick(item)
             }
 
-            // Right 50%: Toggle Selection
             holder.clickZoneRight.setOnClickListener {
                 val adapterPosition = holder.adapterPosition
                 if (adapterPosition != RecyclerView.NO_POSITION) {
@@ -838,7 +922,6 @@ class FileBrowserActivity : AppCompatActivity() {
                 }
             }
 
-            // Disable original item click to avoid conflicts
             holder.itemView.setOnClickListener(null)
             holder.iconView.setOnClickListener(null)
 
@@ -872,7 +955,6 @@ class FileBrowserActivity : AppCompatActivity() {
                 if (holder.previewImage.tag == imagePath) {
                     if (bitmap != null) {
                         holder.previewImage.setImageBitmap(bitmap)
-                        // Preview handled by split zone
                         holder.previewImage.visibility = View.VISIBLE
                         holder.iconView.visibility = View.GONE
                     } else {

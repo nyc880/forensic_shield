@@ -18,7 +18,8 @@
 
         <activity
             android:name="com.example.lock.MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -26,7 +27,97 @@
         </activity>
 
         <activity
+            android:name="com.example.lock.DecryptionHandlerActivity"
+            android:exported="true"
+            android:screenOrientation="portrait"
+            android:launchMode="singleTask">
+
+            <intent-filter android:label="Decrypt with Titan">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="content" />
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="text/*" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+
+            <intent-filter android:label="Decrypt with Titan">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="file" />
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="text/*" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+
+            <intent-filter android:label="Decrypt with Titan">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:host="*" />
+
+                <data android:mimeType="*/*" />
+                <data android:mimeType="text/*" />
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="application/octet-stream" />
+
+                <data android:pathPattern=".*\\.enc\\.txt" />
+                <data android:pathPattern=".*\\.enc\\.txt.*" />
+                <data android:pathPattern=".*\\.enc" />
+                <data android:pathSuffix=".enc.txt" />
+                <data android:pathSuffix=".enc" />
+            </intent-filter>
+
+            <intent-filter android:label="Decrypt with Titan">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+
+                <data android:mimeType="*/*" />
+                <data android:mimeType="text/*" />
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="application/octet-stream" />
+
+                <data android:pathPattern=".*\\.enc\\.txt" />
+                <data android:pathPattern=".*\\.enc\\.txt.*" />
+                <data android:pathPattern=".*\\.enc" />
+                <data android:pathSuffix=".enc.txt" />
+                <data android:pathSuffix=".enc" />
+            </intent-filter>
+
+            <intent-filter android:label="Decrypt with Titan">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+                <data android:mimeType="text/*" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name="com.example.lock.TextEncryptionActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name="com.example.lock.MaximumTextEncryptionActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name="com.example.lock.MaximumEncryptionProcessingActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name="com.example.lock.MaximumEncryptionResultActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 
@@ -69,6 +160,16 @@
             android:name="com.example.lock.MetadataConfirmActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.example.lock.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
     </application>
 </manifest>

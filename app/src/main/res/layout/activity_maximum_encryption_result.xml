@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    android:fitsSystemWindows="true"
+    android:paddingStart="24dp"
+    android:paddingTop="44dp"
+    android:paddingEnd="24dp"
+    android:paddingBottom="56dp">
+
+    <TextView
+        android:id="@+id/txtMaximumSuccessTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="24dp"
+        android:fontFamily="monospace"
+        android:gravity="center"
+        android:text="Your text encryption was successful"
+        android:textColor="#00FF66"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:id="@+id/fileReadyPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/txtFileIcon"
+            android:layout_width="110dp"
+            android:layout_height="130dp"
+            android:background="@drawable/maximum_file_icon_box"
+            android:fontFamily="monospace"
+            android:gravity="center"
+            android:text="ENC\nTXT"
+            android:textColor="#00FF66"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/txtResultFileName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:ellipsize="middle"
+            android:fontFamily="monospace"
+            android:gravity="center"
+            android:maxLines="1"
+            android:text="h8Jv4L0fG0.enc.txt"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/actionButtonsRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="34dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnResultShare"
+                android:layout_width="130dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="14dp"
+                android:backgroundTint="#0088FF"
+                android:fontFamily="monospace"
+                android:text="📤 SHARE"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnResultSave"
+                android:layout_width="130dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="14dp"
+                android:backgroundTint="#00FF66"
+                android:fontFamily="monospace"
+                android:text="💾 SAVE"
+                android:textColor="#000000"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btnResultSafeExit"
+        android:layout_width="220dp"
+        android:layout_height="46dp"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="24dp"
+        android:backgroundTint="#FF0000"
+        android:fontFamily="monospace"
+        android:text="SAFE EXIT"
+        android:textColor="#000000"
+        android:textSize="17sp"
+        android:textStyle="bold" />
+
+</RelativeLayout>

@@ -4,15 +4,20 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Environment
+import android.util.Log
 import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.lock.crypto.EncryptionManager
-import com.example.lock.crypto.SecureMetadataStripper
+import com.example.lock.crypto.EngineType
+import com.example.lock.crypto.LightEncryptionManager
+import com.example.lock.crypto.Lock
 import com.google.android.material.button.MaterialButton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -24,36 +29,60 @@ import java.util.zip.ZipInputStream
 
 class ProcessingActivity : AppCompatActivity() {
 
+    companion object {
+        private const val TAG = "ProcessingActivity_DEBUG"
+    }
+
     private lateinit var progressBar: ProgressBar
     private lateinit var statusText: TextView
     private lateinit var percentText: TextView
     private lateinit var stageText: TextView
     private lateinit var btnDone: MaterialButton
+    private lateinit var btnCancel: MaterialButton
 
     private var currentMode: String = "ENCRYPT"
+    private var taskJob: Job? = null
+    @Volatile private var isCancelledFlag: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_processing)
 
-        progressBar = findViewById(R.id.progressBar)
-        statusText = findViewById(R.id.statusText)
-        percentText = findViewById(R.id.percentText)
-        stageText = findViewById(R.id.stageText)
-        btnDone = findViewById(R.id.btnDone)
+        progressBar = bind("progressBar")
+        statusText = bind("statusText")
+        percentText = bind("percentText")
+        stageText = bind("stageText")
+        btnDone = bind("btnDone")
+        btnCancel = bind("btnCancel")
 
         currentMode = intent.getStringExtra("MODE") ?: "ENCRYPT"
+        Log.d(TAG, "onCreate initialized with mode: $currentMode")
 
         val files = intent.getStringArrayListExtra("FILES") ?: arrayListOf()
         val password = intent.getStringExtra("PASSWORD") ?: ""
-        val secondZipPassword = intent.getStringExtra("SECOND_ZIP_PASSWORD") ?: ""
+        val secondPassword = intent.getStringExtra("SECOND_PASSWORD") ?: ""
         val secondDecryptPassword = intent.getStringExtra("SECOND_DECRYPT_PASSWORD") ?: ""
         val encryptionType = intent.getStringExtra("ENC_TYPE") ?: "JUST_FILES"
+        val engineTypeStr = intent.getStringExtra("ENGINE_TYPE") ?: "MAX"
+        val secondEngineTypeStr = intent.getStringExtra("SECOND_ENGINE_TYPE") ?: engineTypeStr
+        val isDual = intent.getBooleanExtra("IS_DUAL_PASSWORD", false)
         val deleteAfter = intent.getBooleanExtra("DELETE_AFTER", false)
+
+        Log.d(TAG, "Received file count: ${files.size}, isDual: $isDual, engineType: $engineTypeStr")
 
         setInitialProcessingState()
 
+        btnCancel.setOnClickListener {
+            isCancelledFlag = true
+            taskJob?.cancel()
+            showCancelled()
+        }
+
         btnDone.setOnClickListener {
+            if (currentMode == "DECRYPT" && btnDone.text.toString() == "BACK") {
+                finish()
+                return@setOnClickListener
+            }
             val mainIntent = Intent(this, MainActivity::class.java)
             mainIntent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             startActivity(mainIntent)
@@ -64,11 +93,21 @@ class ProcessingActivity : AppCompatActivity() {
             mode = currentMode,
             filePaths = files,
             password = password,
-            secondZipPassword = secondZipPassword,
+            secondPassword = secondPassword,
             secondDecryptPassword = secondDecryptPassword,
             encType = encryptionType,
+            engineTypeStr = engineTypeStr,
+            secondEngineTypeStr = secondEngineTypeStr,
+            isDual = isDual,
             deleteAfter = deleteAfter
         )
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun <T : View> bind(name: String): T {
+        val id = resources.getIdentifier(name, "id", packageName)
+        check(id != 0) { "Missing layout id: $name in activity_processing.xml" }
+        return findViewById(id) as T
     }
 
     private fun setInitialProcessingState() {
@@ -76,18 +115,15 @@ class ProcessingActivity : AppCompatActivity() {
         progressBar.isIndeterminate = false
         progressBar.max = 100
         progressBar.progress = 0
-
+        btnCancel.visibility = View.VISIBLE
         btnDone.visibility = View.GONE
         percentText.visibility = View.VISIBLE
         stageText.visibility = View.VISIBLE
-
         statusText.text = when (currentMode) {
             "ENCRYPT" -> "Encrypting......"
             "DECRYPT" -> "Decrypting......"
-            "METADATA_PURGE" -> "Stripping Metadata..."
             else -> "Processing..."
         }
-
         statusText.setTextColor(Color.parseColor("#FF1744"))
         percentText.text = "0%"
         stageText.text = "Please wait"
@@ -97,39 +133,51 @@ class ProcessingActivity : AppCompatActivity() {
         mode: String,
         filePaths: ArrayList<String>,
         password: String,
-        secondZipPassword: String,
+        secondPassword: String,
         secondDecryptPassword: String,
         encType: String,
+        engineTypeStr: String,
+        secondEngineTypeStr: String,
+        isDual: Boolean,
         deleteAfter: Boolean
     ) {
-        lifecycleScope.launch {
+        Log.d(TAG, "executeTask started for mode: $mode")
+        taskJob = lifecycleScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
                     updateStageOnMainThread("Please wait")
-
+                    if (isCancelledFlag) return@withContext false
                     when (mode) {
-                        "ENCRYPT" -> performEncryption(filePaths, password, secondZipPassword, encType, deleteAfter)
+                        "ENCRYPT" -> performEncryption(filePaths, password, secondPassword, encType, engineTypeStr, secondEngineTypeStr, isDual, deleteAfter)
                         "DECRYPT" -> performDecryption(filePaths, password, secondDecryptPassword)
-                        "METADATA_PURGE" -> performMetadataPurge(filePaths)
-                        else -> false
+                        else -> {
+                            Log.w(TAG, "Unknown mode encountered: $mode")
+                            false
+                        }
                     }
                 }
-
-                if (result) {
-                    showSuccess()
+                Log.d(TAG, "executeTask finished with result: $result")
+                if (isCancelledFlag) {
+                    showCancelled()
+                } else if (result) {
+                    val isEphemeral = intent.getBooleanExtra("IS_EPHEMERAL", false)
+                    if (isEphemeral) finish() else showSuccess()
                 } else {
                     showError("Operation failed.")
                 }
             } catch (e: Exception) {
-                showError(e.message ?: "An unexpected error occurred.")
+                Log.e(TAG, "executeTask exception caught: ${e.message}", e)
+                if (e is CancellationException || isCancelledFlag) {
+                    showCancelled()
+                } else {
+                    showError(e.message ?: "An unexpected error occurred.")
+                }
             }
         }
     }
 
     private suspend fun updateStageOnMainThread(text: String) {
-        withContext(Dispatchers.Main) {
-            stageText.text = text
-        }
+        withContext(Dispatchers.Main) { stageText.text = text }
     }
 
     private suspend fun updateProgressOnMainThread(percent: Int) {
@@ -142,50 +190,52 @@ class ProcessingActivity : AppCompatActivity() {
     private fun performEncryption(
         filePaths: ArrayList<String>,
         password: String,
-        secondZipPassword: String,
+        secondPassword: String,
         encType: String,
+        engineTypeStr: String,
+        secondEngineTypeStr: String,
+        isDual: Boolean,
         deleteAfter: Boolean
     ): Boolean {
+        Log.d(TAG, "performEncryption started")
         val files = filePaths.map { File(it) }.filter { it.exists() && it.isFile }
-        if (files.isEmpty()) return false
+        if (files.isEmpty()) {
+            Log.w(TAG, "performEncryption: No valid files found.")
+            return false
+        }
 
         val mode = when (encType) {
             "JUST_FILES" -> EncryptionProcessor.MODE_JUST_FILES
             "JUST_ZIP" -> EncryptionProcessor.MODE_JUST_ZIP
-            "ZIP_FILES" -> EncryptionProcessor.MODE_FILES_AND_ZIP
-
-            "DOUBLE_ZIP_JUST_ZIP" -> EncryptionProcessor.MODE_JUST_ZIP
-            "DOUBLE_ZIP_FILES_AND_ZIP" -> EncryptionProcessor.MODE_FILES_AND_ZIP
-
-            "DOUBLE_ZIP" -> EncryptionProcessor.MODE_FILES_AND_ZIP
-
+            "FILES_AND_ZIP" -> EncryptionProcessor.MODE_FILES_AND_ZIP
             else -> EncryptionProcessor.MODE_JUST_FILES
         }
 
-        val doubleZip = encType == "DOUBLE_ZIP" ||
-                encType == "DOUBLE_ZIP_JUST_ZIP" ||
-                encType == "DOUBLE_ZIP_FILES_AND_ZIP"
+        val engineType = EngineType.fromString(engineTypeStr)
+        val secondEngineType = EngineType.fromString(secondEngineTypeStr)
 
         return try {
             val processor = EncryptionProcessor(this)
-
             processor.execute(
                 files = files,
                 password = password.toCharArray(),
                 mode = mode,
+                engineType = engineType,
+                secondEngineType = secondEngineType,
                 deleteAfterEncryption = deleteAfter,
-                doubleZip = doubleZip,
-                secondZipPassword = secondZipPassword.toCharArray(),
-                onProgress = { snapshot, _ ->
-                    lifecycleScope.launch {
-                        updateProgressOnMainThread(snapshot.percent)
-                    }
+                isDualPassword = isDual,
+                secondPassword = if (secondPassword.isNotEmpty()) secondPassword.toCharArray() else null,
+                onProgress = { percent, _ ->
+                    if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")
+                    lifecycleScope.launch { updateProgressOnMainThread(percent) }
                 }
             )
-
+            Log.d(TAG, "performEncryption completed successfully.")
             true
-        } catch (_: Exception) {
-            false
+        } catch (e: Exception) {
+            if (e is CancellationException || isCancelledFlag) throw e
+            Log.e(TAG, "Encryption error: ${e.message}", e)
+            throw Exception("Encryption failed: ${e.message}", e)
         }
     }
 
@@ -194,18 +244,19 @@ class ProcessingActivity : AppCompatActivity() {
         password: String,
         secondDecryptPassword: String
     ): Boolean {
+        Log.d(TAG, "performDecryption started with ${filePaths.size} paths")
         val validFiles = filePaths.map { File(it) }.filter { it.exists() && it.isFile }
-        if (validFiles.isEmpty()) return false
-
-        val decDir = File(Environment.getExternalStorageDirectory(), "DEC")
-        if (!decDir.exists()) {
-            decDir.mkdirs()
+        if (validFiles.isEmpty()) {
+            Log.e(TAG, "performDecryption: No valid files found for decryption.")
+            throw Exception("No valid files found for decryption.")
         }
+
+        val isEphemeral = intent.getBooleanExtra("IS_EPHEMERAL", false)
+        val decDir = if (isEphemeral) cacheDir else File(Environment.getExternalStorageDirectory(), "DEC")
+        if (!decDir.exists()) decDir.mkdirs()
 
         val workDir = File(cacheDir, "decrypt_work_${System.currentTimeMillis()}")
-        if (!workDir.exists()) {
-            workDir.mkdirs()
-        }
+        if (!workDir.exists()) workDir.mkdirs()
 
         var allSuccess = true
         var completedFiles = 0
@@ -213,13 +264,15 @@ class ProcessingActivity : AppCompatActivity() {
 
         try {
             for (inputFile in validFiles) {
+                if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")
+
                 try {
-                    lifecycleScope.launch {
-                        updateStageOnMainThread("Decrypting ${inputFile.name}")
-                    }
+                    Log.d(TAG, "Processing file for decryption: ${inputFile.absolutePath}, size: ${inputFile.length()}")
+                    lifecycleScope.launch { updateStageOnMainThread("Decrypting ${inputFile.name}") }
 
                     if (secondDecryptPassword.isNotBlank()) {
-                        decryptDoubleLayerFlow(
+                        Log.d(TAG, "Routing to decryptDualLayerFlow")
+                        decryptDualLayerFlow(
                             inputFile = inputFile,
                             firstPassword = password,
                             secondPassword = secondDecryptPassword,
@@ -229,6 +282,7 @@ class ProcessingActivity : AppCompatActivity() {
                             totalFiles = totalFiles
                         )
                     } else {
+                        Log.d(TAG, "Routing to decryptSingleFlow")
                         decryptSingleFlow(
                             inputFile = inputFile,
                             password = password,
@@ -240,18 +294,18 @@ class ProcessingActivity : AppCompatActivity() {
                     }
 
                     completedFiles++
-
-                    lifecycleScope.launch {
-                        updateProgressOnMainThread(((completedFiles * 100) / totalFiles).coerceIn(0, 100))
-                    }
-                } catch (_: Exception) {
+                    lifecycleScope.launch { updateProgressOnMainThread(((completedFiles * 100) / totalFiles).coerceIn(0, 100)) }
+                } catch (e: Exception) {
+                    if (e is CancellationException || isCancelledFlag) throw e
                     allSuccess = false
+                    Log.e(TAG, "Failed to decrypt file ${inputFile.name}: ${e.message}", e)
+                    throw Exception("Failed to decrypt ${inputFile.name}: ${e.message}", e)
                 }
             }
         } finally {
             deleteRecursivelySafe(workDir)
+            Log.d(TAG, "Work directory cleaned up.")
         }
-
         return allSuccess
     }
 
@@ -263,33 +317,56 @@ class ProcessingActivity : AppCompatActivity() {
         completedFiles: Int,
         totalFiles: Int
     ) {
-        val manager = EncryptionManager()
+        if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")
+        val engineType = EngineType.detectFromFile(inputFile) ?: EngineType.MAX
+        Log.d(TAG, "decryptSingleFlow detected EngineType: $engineType for file: ${inputFile.name}")
 
-        val decryptedFile = manager.decryptFile(
-            inputFile = inputFile,
-            outputDirectory = workDirectory,
-            password = password.toCharArray(),
-            onProgress = { snapshot ->
-                val base = (completedFiles * 100) / totalFiles
-                val portion = snapshot.percent / totalFiles
-                val overall = (base + portion).coerceIn(0, 100)
-
-                lifecycleScope.launch {
-                    updateProgressOnMainThread(overall)
+        val decryptedFile: File = when (engineType) {
+            EngineType.MAX -> {
+                Log.d(TAG, "Using MAX engine for decryption")
+                EncryptionManager().decryptFile(
+                    inputFile = inputFile,
+                    outputDirectory = workDirectory,
+                    password = password.toCharArray(),
+                    onProgress = { snap: EncryptionManager.ProgressSnapshot ->
+                        if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")
+                        val base = (completedFiles * 100) / totalFiles
+                        val portion = snap.percent / totalFiles
+                        lifecycleScope.launch { updateProgressOnMainThread((base + portion).coerceIn(0, 100)) }
+                    }
+                )
+            }
+            EngineType.MEDIUM -> {
+                Log.d(TAG, "Using MEDIUM engine for decryption")
+                if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")
+                decryptWithLockSingle(inputFile, workDirectory, password)
+            }
+            EngineType.EASY -> {
+                Log.d(TAG, "Using EASY (LightEncryptionManager) engine for decryption")
+                try {
+                    LightEncryptionManager().decryptFile(
+                        inputFile = inputFile,
+                        outputDirectory = workDirectory,
+                        password = password.toCharArray(),
+                        isCancelled = { isCancelledFlag },
+                        onProgress = { snap: LightEncryptionManager.ProgressSnapshot ->
+                            val base = (completedFiles * 100) / totalFiles
+                            val portion = snap.percent / totalFiles
+                            lifecycleScope.launch { updateProgressOnMainThread((base + portion).coerceIn(0, 100)) }
+                        }
+                    )
+                } catch (e: Exception) {
+                    Log.e(TAG, "LightEncryptionManager decryption threw exception: ${e.message}", e)
+                    throw e
                 }
             }
-        )
+        }
 
-        handleDecryptedArtifact(
-            artifact = decryptedFile,
-            passwordForNestedEncryptedFiles = password,
-            finalOutputDirectory = finalOutputDirectory,
-            workDirectory = workDirectory,
-            depth = 0
-        )
+        Log.d(TAG, "decryptSingleFlow finished. Artifact produced: ${decryptedFile.absolutePath}")
+        handleDecryptedArtifact(decryptedFile, password, finalOutputDirectory, workDirectory, 0)
     }
 
-    private fun decryptDoubleLayerFlow(
+    private fun decryptDualLayerFlow(
         inputFile: File,
         firstPassword: String,
         secondPassword: String,
@@ -298,30 +375,96 @@ class ProcessingActivity : AppCompatActivity() {
         completedFiles: Int,
         totalFiles: Int
     ) {
-        val manager = EncryptionManager()
+        if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")
+        val outerEngineType = EngineType.detectFromFile(inputFile) ?: EngineType.MAX
+        Log.d(TAG, "decryptDualLayerFlow detected outer EngineType: $outerEngineType for file: ${inputFile.name}")
 
-        val outerDecryptedFile = manager.decryptFile(
-            inputFile = inputFile,
-            outputDirectory = workDirectory,
-            password = secondPassword.toCharArray(),
-            onProgress = { snapshot ->
-                val base = (completedFiles * 100) / totalFiles
-                val portion = (snapshot.percent / 2) / totalFiles
-                val overall = (base + portion).coerceIn(0, 100)
-
-                lifecycleScope.launch {
-                    updateProgressOnMainThread(overall)
-                }
+        val outerDecryptedFile: File = when (outerEngineType) {
+            EngineType.MAX -> {
+                EncryptionManager().decryptFile(
+                    inputFile = inputFile,
+                    outputDirectory = workDirectory,
+                    password = secondPassword.toCharArray(),
+                    onProgress = { snap: EncryptionManager.ProgressSnapshot ->
+                        if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")
+                        val base = (completedFiles * 100) / totalFiles
+                        val portion = (snap.percent / 2) / totalFiles
+                        lifecycleScope.launch { updateProgressOnMainThread((base + portion).coerceIn(0, 100)) }
+                    }
+                )
             }
-        )
+            EngineType.MEDIUM -> {
+                if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")
+                decryptWithLockDualOuter(inputFile, workDirectory, firstPassword, secondPassword)
+            }
+            EngineType.EASY -> {
+                LightEncryptionManager().decryptFile(
+                    inputFile = inputFile,
+                    outputDirectory = workDirectory,
+                    password = secondPassword.toCharArray(),
+                    isCancelled = { isCancelledFlag },
+                    onProgress = { snap: LightEncryptionManager.ProgressSnapshot ->
+                        val base = (completedFiles * 100) / totalFiles
+                        val portion = (snap.percent / 2) / totalFiles
+                        lifecycleScope.launch { updateProgressOnMainThread((base + portion).coerceIn(0, 100)) }
+                    }
+                )
+            }
+        }
 
-        handleDecryptedArtifact(
-            artifact = outerDecryptedFile,
-            passwordForNestedEncryptedFiles = firstPassword,
-            finalOutputDirectory = finalOutputDirectory,
-            workDirectory = workDirectory,
-            depth = 0
-        )
+        handleDecryptedArtifact(outerDecryptedFile, firstPassword, finalOutputDirectory, workDirectory, 0)
+    }
+
+    private fun decryptWithLockSingle(inputFile: File, workDir: File, password: String): File {
+        val passBytes = password.toByteArray(Charsets.UTF_8)
+        val tmpOut = File(workDir, "lock_dec_${System.nanoTime()}.tmp")
+        try {
+            Lock.decrypt(inputFile, tmpOut, passBytes)
+            val originalName = try {
+                Lock.peekOriginalName(inputFile, passBytes)
+            } catch (_: Exception) { null }
+            val finalName = if (!originalName.isNullOrBlank()) originalName else inputFile.nameWithoutExtension
+            val result = createNonConflictingFile(workDir, finalName)
+            if (!tmpOut.renameTo(result)) {
+                FileInputStream(tmpOut).use { i -> FileOutputStream(result).use { o -> i.copyTo(o) } }
+                tmpOut.delete()
+            }
+            return result
+        } finally {
+            tmpOut.delete()
+            java.util.Arrays.fill(passBytes, 0)
+            Lock.wipe(passBytes)
+        }
+    }
+
+    private fun decryptWithLockDualOuter(
+        inputFile: File,
+        workDir: File,
+        firstPassword: String,
+        secondPassword: String
+    ): File {
+        val pass1 = firstPassword.toByteArray(Charsets.UTF_8)
+        val pass2 = secondPassword.toByteArray(Charsets.UTF_8)
+        val tmpOut = File(workDir, "lock_dual_${System.nanoTime()}.tmp")
+        try {
+            Lock.decrypt(inputFile, tmpOut, pass1, pass2)
+            val originalName = try {
+                Lock.peekOriginalName(inputFile, pass1)
+            } catch (_: Exception) { null }
+            val finalName = if (!originalName.isNullOrBlank()) originalName else tmpOut.name
+            val result = createNonConflictingFile(workDir, finalName)
+            if (!tmpOut.renameTo(result)) {
+                FileInputStream(tmpOut).use { i -> FileOutputStream(result).use { o -> i.copyTo(o) } }
+                tmpOut.delete()
+            }
+            return result
+        } finally {
+            tmpOut.delete()
+            java.util.Arrays.fill(pass1, 0)
+            java.util.Arrays.fill(pass2, 0)
+            Lock.wipe(pass1)
+            Lock.wipe(pass2)
+        }
     }
 
     private fun handleDecryptedArtifact(
@@ -331,296 +474,159 @@ class ProcessingActivity : AppCompatActivity() {
         workDirectory: File,
         depth: Int
     ) {
+        if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")
+        Log.d(TAG, "handleDecryptedArtifact at depth $depth for artifact: ${artifact.absolutePath}, isDirectory: ${artifact.isDirectory}")
         if (depth > 8) {
-            moveFileToDirectory(artifact, finalOutputDirectory)
+            Log.w(TAG, "Max depth exceeded in handleDecryptedArtifact. Moving as-is.")
+            val savedFile = moveFileToDirectory(artifact, finalOutputDirectory)
+            if (intent.getBooleanExtra("IS_EPHEMERAL", false)) {
+                lifecycleScope.launch(Dispatchers.Main) { openEphemeralFile(savedFile) }
+            }
+            return
+        }
+        if (!artifact.exists()) {
+            Log.w(TAG, "handleDecryptedArtifact: artifact does not exist.")
             return
         }
 
-        if (!artifact.exists()) return
-
         if (artifact.isDirectory) {
             val children = artifact.listFiles()?.toList().orEmpty()
-
-            if (children.isEmpty()) {
-                artifact.delete()
-                return
-            }
-
+            if (children.isEmpty()) { artifact.delete(); return }
             for (child in children) {
-                handleDecryptedArtifact(
-                    artifact = child,
-                    passwordForNestedEncryptedFiles = passwordForNestedEncryptedFiles,
-                    finalOutputDirectory = finalOutputDirectory,
-                    workDirectory = workDirectory,
-                    depth = depth + 1
-                )
+                if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")
+                handleDecryptedArtifact(child, passwordForNestedEncryptedFiles, finalOutputDirectory, workDirectory, depth + 1)
             }
-
             artifact.delete()
             return
         }
 
         if (isZipFile(artifact)) {
-            lifecycleScope.launch {
-                updateStageOnMainThread("Auto extracting ${artifact.name}")
-            }
-
+            Log.d(TAG, "Artifact is a ZIP file, extracting...")
+            lifecycleScope.launch { updateStageOnMainThread("Auto extracting ${artifact.name}") }
             val extractDir = File(workDirectory, "extract_${System.nanoTime()}")
             extractDir.mkdirs()
-
-            extractZip(
-                zipFile = artifact,
-                outputDirectory = extractDir
-            )
-
+            extractZip(artifact, extractDir)
             artifact.delete()
-
             val extractedFiles = extractDir.listFiles()?.toList().orEmpty()
-
             for (file in extractedFiles) {
-                handleDecryptedArtifact(
-                    artifact = file,
-                    passwordForNestedEncryptedFiles = passwordForNestedEncryptedFiles,
-                    finalOutputDirectory = finalOutputDirectory,
-                    workDirectory = workDirectory,
-                    depth = depth + 1
-                )
+                if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")
+                handleDecryptedArtifact(file, passwordForNestedEncryptedFiles, finalOutputDirectory, workDirectory, depth + 1)
             }
-
             extractDir.delete()
             return
         }
 
         if (isEncryptedFile(artifact)) {
-            lifecycleScope.launch {
-                updateStageOnMainThread("Decrypting inner layer")
+            Log.d(TAG, "Artifact is a nested encrypted file, decrypting inner layer...")
+            lifecycleScope.launch { updateStageOnMainThread("Decrypting inner layer") }
+            val innerEngineType = EngineType.detectFromFile(artifact) ?: EngineType.MAX
+            val innerDecrypted: File = when (innerEngineType) {
+                EngineType.MAX -> EncryptionManager().decryptFile(artifact, workDirectory, passwordForNestedEncryptedFiles.toCharArray())
+                EngineType.MEDIUM -> decryptWithLockSingle(artifact, workDirectory, passwordForNestedEncryptedFiles)
+                EngineType.EASY -> LightEncryptionManager().decryptFile(artifact, workDirectory, passwordForNestedEncryptedFiles.toCharArray(), isCancelled = { isCancelledFlag })
             }
-
-            val manager = EncryptionManager()
-
-            val innerDecrypted = manager.decryptFile(
-                inputFile = artifact,
-                outputDirectory = workDirectory,
-                password = passwordForNestedEncryptedFiles.toCharArray()
-            )
-
             artifact.delete()
-
-            handleDecryptedArtifact(
-                artifact = innerDecrypted,
-                passwordForNestedEncryptedFiles = passwordForNestedEncryptedFiles,
-                finalOutputDirectory = finalOutputDirectory,
-                workDirectory = workDirectory,
-                depth = depth + 1
-            )
-
+            handleDecryptedArtifact(innerDecrypted, passwordForNestedEncryptedFiles, finalOutputDirectory, workDirectory, depth + 1)
             return
         }
 
-        moveFileToDirectory(artifact, finalOutputDirectory)
+        val savedFile = moveFileToDirectory(artifact, finalOutputDirectory)
+        Log.d(TAG, "Final artifact saved to: ${savedFile.absolutePath}")
+        if (intent.getBooleanExtra("IS_EPHEMERAL", false)) {
+            lifecycleScope.launch(Dispatchers.Main) { openEphemeralFile(savedFile) }
+        }
     }
 
     private fun isEncryptedFile(file: File): Boolean {
-        return file.isFile && file.extension.lowercase(Locale.getDefault()) == "enc"
+        return EngineType.detectFromFile(file) != null
     }
 
     private fun isZipFile(file: File): Boolean {
         if (!file.exists() || !file.isFile || file.length() < 4L) return false
-
         val lowerName = file.name.lowercase(Locale.getDefault())
         if (lowerName.endsWith(".zip")) return true
-
         return try {
             FileInputStream(file).use { input ->
-                val signature = ByteArray(4)
-                val read = input.read(signature)
-
-                read == 4 &&
-                        signature[0] == 0x50.toByte() &&
-                        signature[1] == 0x4B.toByte() &&
-                        (
-                                signature[2] == 0x03.toByte() ||
-                                        signature[2] == 0x05.toByte() ||
-                                        signature[2] == 0x07.toByte()
-                                ) &&
-                        (
-                                signature[3] == 0x04.toByte() ||
-                                        signature[3] == 0x06.toByte() ||
-                                        signature[3] == 0x08.toByte()
-                                )
+                val sig = ByteArray(4)
+                val read = input.read(sig)
+                read == 4 && sig[0] == 0x50.toByte() && sig[1] == 0x4B.toByte()
             }
-        } catch (_: Exception) {
-            false
-        }
+        } catch (_: Exception) { false }
     }
 
-    private fun extractZip(
-        zipFile: File,
-        outputDirectory: File
-    ) {
-        if (!outputDirectory.exists()) {
-            outputDirectory.mkdirs()
-        }
-
+    private fun extractZip(zipFile: File, outputDirectory: File) {
+        if (!outputDirectory.exists()) outputDirectory.mkdirs()
         val canonicalOutputPath = outputDirectory.canonicalPath + File.separator
-
         ZipInputStream(FileInputStream(zipFile).buffered()).use { zipInput ->
             while (true) {
-                val currentEntry: ZipEntry = zipInput.nextEntry ?: break
-
-                val outFile = File(outputDirectory, currentEntry.name)
-                val canonicalOutFilePath = outFile.canonicalPath
-
-                if (!canonicalOutFilePath.startsWith(canonicalOutputPath)) {
-                    zipInput.closeEntry()
-                    continue
-                }
-
-                if (currentEntry.isDirectory) {
-                    outFile.mkdirs()
-                } else {
+                if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")
+                val entry: ZipEntry = zipInput.nextEntry ?: break
+                val outFile = File(outputDirectory, entry.name)
+                if (!outFile.canonicalPath.startsWith(canonicalOutputPath)) { zipInput.closeEntry(); continue }
+                if (entry.isDirectory) outFile.mkdirs()
+                else {
                     outFile.parentFile?.mkdirs()
-
-                    val finalFile = createNonConflictingFile(
-                        directory = outFile.parentFile ?: outputDirectory,
-                        preferredName = outFile.name
-                    )
-
-                    FileOutputStream(finalFile).use { output ->
-                        zipInput.copyTo(output)
-                    }
+                    val finalFile = createNonConflictingFile(outFile.parentFile ?: outputDirectory, outFile.name)
+                    FileOutputStream(finalFile).use { output -> zipInput.copyTo(output) }
                 }
-
                 zipInput.closeEntry()
             }
         }
     }
 
-    private fun moveFileToDirectory(
-        sourceFile: File,
-        outputDirectory: File
-    ): File {
-        if (!outputDirectory.exists()) {
-            outputDirectory.mkdirs()
-        }
-
-        val targetFile = createNonConflictingFile(
-            directory = outputDirectory,
-            preferredName = sourceFile.name
-        )
-
+    private fun moveFileToDirectory(sourceFile: File, outputDirectory: File): File {
+        if (!outputDirectory.exists()) outputDirectory.mkdirs()
+        val targetFile = createNonConflictingFile(outputDirectory, sourceFile.name)
         return try {
-            if (sourceFile.renameTo(targetFile)) {
-                targetFile
-            } else {
+            if (sourceFile.renameTo(targetFile)) targetFile
+            else {
                 FileInputStream(sourceFile).use { input ->
-                    FileOutputStream(targetFile).use { output ->
-                        input.copyTo(output)
-                    }
+                    FileOutputStream(targetFile).use { output -> input.copyTo(output) }
                 }
                 sourceFile.delete()
                 targetFile
             }
-        } catch (e: Exception) {
-            targetFile.delete()
-            throw e
-        }
+        } catch (e: Exception) { targetFile.delete(); throw e }
     }
 
-    private fun createNonConflictingFile(
-        directory: File,
-        preferredName: String
-    ): File {
-        if (!directory.exists()) {
-            directory.mkdirs()
-        }
-
-        val safeName = sanitizeFileName(preferredName)
+    private fun createNonConflictingFile(directory: File, preferredName: String): File {
+        if (!directory.exists()) directory.mkdirs()
+        val safeName = preferredName.replace('\u0000', '_').replace('/', '_').replace('\\', '_').trim()
         var candidate = File(directory, safeName)
-
-        if (!candidate.exists()) {
-            return candidate
-        }
-
+        if (!candidate.exists()) return candidate
         val dotIndex = safeName.lastIndexOf('.')
-        val baseName: String
-        val extension: String
-
-        if (dotIndex > 0) {
-            baseName = safeName.substring(0, dotIndex)
-            extension = safeName.substring(dotIndex)
-        } else {
-            baseName = safeName
-            extension = ""
-        }
-
+        val baseName = if (dotIndex > 0) safeName.substring(0, dotIndex) else safeName
+        val ext = if (dotIndex > 0) safeName.substring(dotIndex) else ""
         var counter = 1
-        while (counter < 10_000) {
-            candidate = File(directory, "$baseName ($counter)$extension")
-
-            if (!candidate.exists()) {
-                return candidate
-            }
-
+        while (counter < 10000) {
+            candidate = File(directory, "$baseName ($counter)$ext")
+            if (!candidate.exists()) return candidate
             counter++
         }
-
         return File(directory, "${System.currentTimeMillis()}_$safeName")
-    }
-
-    private fun sanitizeFileName(fileName: String): String {
-        val safe = fileName
-            .replace('\u0000', '_')
-            .replace('/', '_')
-            .replace('\\', '_')
-            .trim()
-
-        return if (safe.isBlank() || safe == "." || safe == "..") {
-            "restored_${System.currentTimeMillis()}"
-        } else {
-            safe
-        }
     }
 
     private fun deleteRecursivelySafe(targetFile: File): Boolean {
         return try {
-            if (targetFile.isDirectory) {
-                targetFile.listFiles()?.forEach { child ->
-                    deleteRecursivelySafe(child)
-                }
-            }
-
+            if (targetFile.isDirectory) targetFile.listFiles()?.forEach { deleteRecursivelySafe(it) }
             targetFile.delete()
-        } catch (_: Exception) {
-            false
-        }
+        } catch (_: Exception) { false }
     }
 
     private fun showSuccess() {
         progressBar.visibility = View.GONE
+        btnCancel.visibility = View.GONE
         statusText.setTextColor(Color.parseColor("#00FF66"))
-
-        statusText.text = when (currentMode) {
-            "ENCRYPT" -> "Encryption Operation Completed Successfully"
-            "DECRYPT" -> "Decryption Operation Completed Successfully"
-            "METADATA_PURGE" -> "Metadata Stripped Successfully"
-            else -> "Operation Completed"
-        }
-
+        statusText.text = if (currentMode == "ENCRYPT") "Encryption Completed Successfully" else "Decryption Completed Successfully"
         percentText.text = "100%"
-
-        stageText.text = when (currentMode) {
-            "ENCRYPT" -> "Files saved inside the ENC"
-            "METADATA_PURGE" -> "Files saved inside NO meta folder"
-            else -> "Files saved inside the DEC"
-        }
-
+        stageText.text = if (currentMode == "ENCRYPT") "Files saved inside the ENC" else "Files saved inside the DEC"
         btnDone.visibility = View.VISIBLE
         btnDone.text = "DONE"
     }
 
     private fun showError(msg: String) {
         progressBar.visibility = View.GONE
+        btnCancel.visibility = View.GONE
         statusText.setTextColor(Color.parseColor("#FF3D00"))
         statusText.text = "Error"
         stageText.text = msg
@@ -628,46 +634,33 @@ class ProcessingActivity : AppCompatActivity() {
         btnDone.text = "BACK"
     }
 
-    private suspend fun performMetadataPurge(filePaths: ArrayList<String>): Boolean {
-        var completed = 0
-        val total = filePaths.size
-        val root = android.os.Environment.getExternalStorageDirectory()
-        val noMetaDir = java.io.File(root, "NO meta")
-
-        if (!noMetaDir.exists()) {
-            noMetaDir.mkdirs()
-        }
-
-        var allSuccess = true
-        for (path in filePaths) {
-            val inputFile = java.io.File(path)
-            if (!inputFile.exists()) continue
-
-            updateStageOnMainThread("Stripping: ${inputFile.name}")
-            val outputFile = java.io.File(noMetaDir, "CLEAN_" + inputFile.name)
-
-            try {
-                val success = when {
-                    path.lowercase().endsWith(".jpg") || path.lowercase().endsWith(".jpeg") || path.lowercase().endsWith(".png") -> {
-                        SecureMetadataStripper.stripImage(java.io.FileInputStream(inputFile), java.io.FileOutputStream(outputFile))
-                    }
-                    path.lowercase().endsWith(".mp4") || path.lowercase().endsWith(".mp3") || path.lowercase().endsWith(".m4a") -> {
-                        SecureMetadataStripper.stripMedia(inputFile.absolutePath, outputFile.absolutePath)
-                    }
-                    path.lowercase().endsWith(".pdf") -> {
-                        SecureMetadataStripper.stripPdf(inputFile, java.io.FileOutputStream(outputFile))
-                    }
-                    else -> false
-                }
-                if (!success) allSuccess = false
-            } catch (e: Exception) {
-                allSuccess = false
-            }
-
-            completed++
-            updateProgressOnMainThread((completed * 100) / total)
-        }
-        return allSuccess
+    private fun showCancelled() {
+        progressBar.visibility = View.GONE
+        btnCancel.visibility = View.GONE
+        statusText.setTextColor(Color.parseColor("#FF3D00"))
+        statusText.text = "Cancelled"
+        stageText.text = "Operation was cancelled by user."
+        percentText.visibility = View.GONE
+        btnDone.visibility = View.VISIBLE
+        btnDone.text = "BACK"
     }
 
+    private fun openEphemeralFile(file: File) {
+        try {
+            val intent = Intent(this, FilePreviewActivity::class.java).apply {
+                putExtra("file_path", file.absolutePath)
+                putExtra("crypto_mode", "VIEW_ONLY")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error launching preview: ${e.message}", e)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        isCancelledFlag = true
+        taskJob?.cancel()
+    }
 }

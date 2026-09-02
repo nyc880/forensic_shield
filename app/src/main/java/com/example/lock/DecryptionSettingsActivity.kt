@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.CheckBox
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
@@ -17,6 +18,7 @@ class DecryptionSettingsActivity : AppCompatActivity() {
     private lateinit var passwordInput: TextInputEditText
     private lateinit var secondPasswordInput: TextInputEditText
     private lateinit var startBtn: MaterialButton
+    private lateinit var checkEphemeral: CheckBox
 
     private fun <T : View> bindId(idName: String): T {
         val id = resources.getIdentifier(idName, "id", packageName)
@@ -34,6 +36,7 @@ class DecryptionSettingsActivity : AppCompatActivity() {
         passwordInput = bindId("password_input")
         secondPasswordInput = bindId("second_password_input")
         startBtn = bindId("btn_start_decrypt")
+        checkEphemeral = bindId("check_ephemeral")
 
         val selectedFiles = intent.getStringArrayListExtra("SELECTED_FILES") ?: arrayListOf()
 
@@ -51,13 +54,13 @@ class DecryptionSettingsActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            val intent = Intent(this, ProcessingActivity::class.java)
-            intent.putExtra("MODE", "DECRYPT")
-            intent.putStringArrayListExtra("FILES", selectedFiles)
-            intent.putExtra("PASSWORD", password)
-            intent.putExtra("SECOND_DECRYPT_PASSWORD", secondPassword)
-            startActivity(intent)
-            finish()
+            val decryptIntent = Intent(this, ProcessingActivity::class.java)
+            decryptIntent.putExtra("MODE", "DECRYPT")
+            decryptIntent.putStringArrayListExtra("FILES", selectedFiles)
+            decryptIntent.putExtra("PASSWORD", password)
+            decryptIntent.putExtra("SECOND_DECRYPT_PASSWORD", secondPassword)
+            decryptIntent.putExtra("IS_EPHEMERAL", checkEphemeral.isChecked)
+            startActivity(decryptIntent)
         }
     }
 
