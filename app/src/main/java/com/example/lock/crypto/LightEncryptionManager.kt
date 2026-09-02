@@ -1,6 +1,5 @@
 package com.example.lock.crypto
 
-import android.util.Log
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
@@ -24,8 +23,6 @@ class LightEncryptionManager {
     )
 
     companion object {
-        private const val TAG: String = "LightEncryptionManager"
-
         private val FILE_MAGIC: ByteArray = byteArrayOf(0x45, 0x5A, 0x59, 0x53, 0x5F, 0x45, 0x5A, 0x59)
         private const val MAGIC_SIZE: Int = 8
         private const val SALT_SIZE: Int = 16
@@ -55,10 +52,7 @@ class LightEncryptionManager {
         isCancelled: () -> Boolean = { false },
         onProgress: ((ProgressSnapshot) -> Unit)? = null
     ): File {
-        Log.d(TAG, "Starting encryption for file: ${inputFile.absolutePath}")
-
         if (!inputFile.exists() || !inputFile.isFile) {
-            Log.e(TAG, "Encryption failed: Input file does not exist.")
             throw IllegalArgumentException("Input file does not exist.")
         }
         if (!outputDirectory.exists()) {
@@ -77,7 +71,6 @@ class LightEncryptionManager {
                     val salt = ByteArray(SALT_SIZE).also { random.nextBytes(it) }
                     val baseNonce = ByteArray(BASE_NONCE_SIZE).also { random.nextBytes(it) }
 
-                    Log.d(TAG, "Generating derived key using PBKDF2...")
                     val derivedKey = deriveKey(password, salt)
                     val headerHash = computeHeaderHash(salt, baseNonce)
 
@@ -87,7 +80,6 @@ class LightEncryptionManager {
                     outputStream.write(salt)
                     outputStream.write(baseNonce)
                     outputStream.write(headerHash)
-                    Log.d(TAG, "Header written successfully.")
 
                     val paddedMetadata = ByteArray(METADATA_BLOCK_SIZE)
                     val copyLength = metadata.size.coerceAtMost(METADATA_BLOCK_SIZE)
@@ -98,7 +90,6 @@ class LightEncryptionManager {
 
                     val encryptedMetadata = encryptChunk(cipher, keySpec, baseNonce, 0L, 'M'.code.toByte(), paddedMetadata, METADATA_BLOCK_SIZE, headerHash)
                     outputStream.write(encryptedMetadata)
-                    Log.d(TAG, "Metadata chunk encrypted and written.")
 
                     val totalBytes = inputFile.length()
                     val buffer = ByteArray(CHUNK_DATA_SIZE)
@@ -118,13 +109,11 @@ class LightEncryptionManager {
                         onProgress?.invoke(ProgressSnapshot(percent, processedBytes, totalBytes))
                         chunkIndex++
                     }
-                    Log.d(TAG, "Encryption completed successfully. Output file: ${outputFile.absolutePath}, Total chunks: ${chunkIndex - 1}")
                 }
             }
         } catch (e: Exception) {
             if (outputFile.exists()) {
                 outputFile.delete()
-                Log.w(TAG, "Encryption cancelled or failed. Partial output file deleted.")
             }
             throw e
         }
@@ -138,10 +127,7 @@ class LightEncryptionManager {
         isCancelled: () -> Boolean = { false },
         onProgress: ((ProgressSnapshot) -> Unit)? = null
     ): File {
-        Log.d(TAG, "Starting decryption for file: ${inputFile.absolutePath}")
-
         if (!inputFile.exists() || !inputFile.isFile) {
-            Log.e(TAG, "Decryption error: Input file does not exist.")
             throw IllegalArgumentException("Input file does not exist.")
         }
         if (!outputDirectory.exists()) {
@@ -158,10 +144,8 @@ class LightEncryptionManager {
                 val magicBytesRead = readFully(inputStream, magicBuffer, MAGIC_SIZE)
 
                 if (magicBytesRead != MAGIC_SIZE || !magicBuffer.contentEquals(FILE_MAGIC)) {
-                    Log.e(TAG, "Decryption error: Invalid magic header.")
                     throw IllegalArgumentException(ERROR_INVALID_HEADER)
                 }
-                Log.d(TAG, "Magic header verified successfully.")
 
                 val salt = ByteArray(SALT_SIZE)
                 readFully(inputStream, salt, SALT_SIZE)
@@ -172,7 +156,6 @@ class LightEncryptionManager {
                 val headerHash = ByteArray(HEADER_HASH_SIZE)
                 readFully(inputStream, headerHash, HEADER_HASH_SIZE)
 
-                Log.d(TAG, "Header components extracted. Deriving key...")
                 val derivedKey = deriveKey(password, salt)
 
                 val encryptedMetaSizeBytes = METADATA_BLOCK_SIZE + GCM_TAG_LENGTH_BYTES
@@ -180,17 +163,14 @@ class LightEncryptionManager {
                 val metaBytesRead = readFully(inputStream, encryptedMetaChunk, encryptedMetaSizeBytes)
 
                 if (metaBytesRead != encryptedMetaSizeBytes) {
-                    Log.e(TAG, "Decryption error: Metadata chunk size mismatch.")
                     throw IllegalArgumentException(ERROR_INVALID_HEADER)
                 }
 
                 val cipher = Cipher.getInstance(TRANSFORMATION_AES_GCM)
                 val keySpec = SecretKeySpec(derivedKey, ALGORITHM_AES)
 
-                Log.d(TAG, "Decrypting metadata chunk...")
                 val metadata = decryptChunk(cipher, keySpec, baseNonce, 0L, 'M'.code.toByte(), encryptedMetaChunk, headerHash)
                 val originalName = extractOriginalFileName(metadata) ?: inputFile.nameWithoutExtension
-                Log.d(TAG, "Metadata decrypted. Extracted original filename: $originalName")
 
                 outputFile = File(outputDirectory, originalName)
 
@@ -207,7 +187,6 @@ class LightEncryptionManager {
 
                         val rawEncrypted = if (bytesRead == CHUNK_TOTAL_SIZE) chunkBuffer else chunkBuffer.copyOf(bytesRead)
 
-                        Log.v(TAG, "Decrypting data chunk #$chunkIndex with size ${rawEncrypted.size} bytes...")
                         val decryptedChunk = decryptChunk(cipher, keySpec, baseNonce, chunkIndex, 'D'.code.toByte(), rawEncrypted, headerHash)
 
                         outputStream.write(decryptedChunk)
@@ -219,13 +198,11 @@ class LightEncryptionManager {
                         chunkIndex++
                     }
                 }
-                Log.d(TAG, "Decryption completed successfully. Output path: ${outputFile!!.absolutePath}")
                 return outputFile!!
             }
         } catch (e: Exception) {
             if (outputFile != null && outputFile!!.exists()) {
                 outputFile!!.delete()
-                Log.w(TAG, "Decryption cancelled or failed. Partial output file deleted.")
             }
             throw e
         }
@@ -242,7 +219,6 @@ class LightEncryptionManager {
             val length = if (nullIndex >= 0) nullIndex else metadata.size
             if (length > 0) String(metadata, 0, length, Charsets.UTF_8).trim() else null
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to extract original file name from metadata: ${e.message}")
             null
         }
     }
@@ -282,7 +258,6 @@ class LightEncryptionManager {
             cipher.updateAAD(aad)
             return cipher.doFinal(encryptedData)
         } catch (e: Exception) {
-            Log.e(TAG, "Crypto Exception on Chunk #$chunkIndex. Error: ${e.javaClass.simpleName} - ${e.message}", e)
             throw SecurityException(ERROR_DECRYPTION_FAILED, e)
         }
     }
