@@ -1,4 +1,4 @@
-package com.example.lock
+package com.example.lock.text_encrypt
 
 import android.content.ClipData
 import android.content.Intent
@@ -12,6 +12,8 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import com.example.lock.R
+import com.example.lock.SafeExit
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -39,7 +41,11 @@ class MaximumEncryptionResultActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 cleanupTempFile()
-                SafeExit.performSafeExit(this@MaximumEncryptionResultActivity)
+                val intent = Intent().setClassName(this@MaximumEncryptionResultActivity, "com.example.lock.max_text_encrypt.MaximumTextEncryptionActivity").apply {
+                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                }
+                startActivity(intent)
+                finish()
             }
         })
 

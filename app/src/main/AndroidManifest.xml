@@ -101,26 +101,43 @@
             </intent-filter>
         </activity>
 
+        <!-- بخش ماژول رمزنگاری متن (text_encrypt) -->
         <activity
-            android:name="com.example.lock.TextEncryptionActivity"
+            android:name="com.example.lock.text_encrypt.TextEncryptionActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 
         <activity
-            android:name="com.example.lock.MaximumTextEncryptionActivity"
+            android:name="com.example.lock.text_encrypt.MaximumTextEncryptionActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 
         <activity
-            android:name="com.example.lock.MaximumEncryptionProcessingActivity"
+            android:name="com.example.lock.text_encrypt.MaximumTextDecryptionActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 
         <activity
-            android:name="com.example.lock.MaximumEncryptionResultActivity"
+            android:name="com.example.lock.text_encrypt.MaximumEncryptionProcessingActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 
+        <activity
+            android:name="com.example.lock.text_encrypt.MaximumDecryptionProcessingActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name="com.example.lock.text_encrypt.MaximumEncryptionResultActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name="com.example.lock.text_encrypt.MaximumDecryptionResultActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <!-- سایر اکتیویتی‌های برنامه -->
         <activity
             android:name="com.example.lock.FileBrowserActivity"
             android:exported="false"

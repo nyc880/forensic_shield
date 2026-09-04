@@ -26,7 +26,7 @@
         android:id="@+id/decryptedOutputScrollView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_above="@id/btnNeonExit"
+        android:layout_above="@id/layoutBottomActions"
         android:layout_below="@id/lblResultTitle"
         android:layout_marginTop="22dp"
         android:layout_marginBottom="22dp"
@@ -66,18 +66,45 @@
 
     </androidx.core.widget.NestedScrollView>
 
-    <Button
-        android:id="@+id/btnNeonExit"
-        android:layout_width="220dp"
-        android:layout_height="44dp"
+    <LinearLayout
+        android:id="@+id/layoutBottomActions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginBottom="56dp"
-        android:background="@drawable/red_rounded_exit_button"
-        android:backgroundTint="#FF0000"
-        android:text="SAFE EXIT"
-        android:textColor="#000000"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+        android:layout_marginBottom="48dp"
+        android:orientation="horizontal"
+        android:weightSum="4">
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnCopy"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/red_rounded_exit_button"
+            android:backgroundTint="#FFFFFF"
+            android:padding="0dp"
+            android:text="COPY"
+            android:textColor="#000000"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnNeonExit"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_weight="3"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="10dp"
+            android:background="@drawable/red_rounded_exit_button"
+            android:backgroundTint="#00FF00"
+            android:padding="0dp"
+            android:text="SAFE EXIT"
+            android:textColor="#000000"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
 
 </RelativeLayout>

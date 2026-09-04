@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootMaximumDecryptionProcessing"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    android:fitsSystemWindows="true"
+    android:paddingStart="24dp"
+    android:paddingTop="36dp"
+    android:paddingEnd="24dp"
+    android:paddingBottom="36dp">
+
+    <LinearLayout
+        android:id="@+id/layoutMaximumDecrypting"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <ProgressBar
+            android:id="@+id/progressMaximumDecrypting"
+            android:layout_width="58dp"
+            android:layout_height="58dp"
+            android:indeterminate="true"
+            android:indeterminateTint="#FF6B6B" />
+
+        <TextView
+            android:id="@+id/txtMaximumDecryptingStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:fontFamily="monospace"
+            android:gravity="center"
+            android:text="decrypting... please wait"
+            android:textColor="#FF6B6B"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/txtMaximumDecryptingSubStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:fontFamily="monospace"
+            android:gravity="center"
+            android:text="processing secure decryption"
+            android:textColor="#E57373"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+
+</FrameLayout>

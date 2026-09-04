@@ -1,8 +1,7 @@
-package com.example.lock
+package com.example.lock.text_encrypt
 
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -19,17 +18,16 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
+import com.example.lock.R
+import com.example.lock.crypto.MaxTextEncryptionEngine
+import com.example.lock.crypto.MediumShortEncryptionEngine
 import com.google.android.material.card.MaterialCardView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.UUID
-import java.security.SecureRandom
 import java.io.File
 import java.io.FileOutputStream
-
-import com.example.lock.crypto.MediumShortEncryptionEngine
-import com.example.lock.crypto.MaxTextEncryptionEngine
+import java.security.SecureRandom
 
 class TextEncryptionActivity : AppCompatActivity() {
 
@@ -72,6 +70,12 @@ class TextEncryptionActivity : AppCompatActivity() {
         setupListeners()
     }
 
+    override fun onResume() {
+        super.onResume()
+        Log.d(TAG, "[LIFECYCLE] onResume invoked. Resetting selection to Medium/Short tier.")
+        rbMediumShort.isChecked = true
+    }
+
     private fun initViews() {
         mainTextBox = findViewById(R.id.main_text_box)
         inputPassword = findViewById(R.id.input_password)
@@ -105,16 +109,14 @@ class TextEncryptionActivity : AppCompatActivity() {
         }
 
         btnClear.setOnClickListener {
-            mainTextBox.text.clear()
-            importedPayload = null
-            pendingEncryptedPayload = null
+            cleanupSensitiveState()
             Toast.makeText(this, "Memory and UI cleared", Toast.LENGTH_SHORT).show()
         }
 
         btnCopy.setOnClickListener {
             val textToCopy = if (!pendingEncryptedPayload.isNullOrEmpty()) pendingEncryptedPayload else mainTextBox.text.toString()
             if (!textToCopy.isNullOrEmpty()) {
-                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
                 val clip = ClipData.newPlainText("EncryptedText", textToCopy)
                 clipboard.setPrimaryClip(clip)
                 Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
@@ -124,8 +126,8 @@ class TextEncryptionActivity : AppCompatActivity() {
         }
 
         btnPaste.setOnClickListener {
-            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            if (clipboard.hasPrimaryClip() && clipboard.primaryClip?.itemCount ?: 0 > 0) {
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+            if (clipboard.hasPrimaryClip() && (clipboard.primaryClip?.itemCount ?: 0) > 0) {
                 val pastedText = clipboard.primaryClip?.getItemAt(0)?.text.toString()
                 mainTextBox.setText(pastedText)
                 importedPayload = null
@@ -174,22 +176,9 @@ class TextEncryptionActivity : AppCompatActivity() {
     private fun openMaximumEncryptionModule() {
         Log.i(TAG, "[UI_EVENT] Maximum Encrypt selected. Routing to Maximum module.")
 
-        rbMediumShort.isChecked = true
-
         try {
-            Class.forName("$packageName.MaximumTextEncryptionActivity")
-
-            val intent = Intent().setClassName(
-                this,
-                "$packageName.MaximumTextEncryptionActivity"
-            )
+            val intent = Intent(this, MaximumTextEncryptionActivity::class.java)
             startActivity(intent)
-        } catch (_: ClassNotFoundException) {
-            Toast.makeText(
-                this,
-                "Maximum Encryption module is not ready yet",
-                Toast.LENGTH_SHORT
-            ).show()
         } catch (e: Exception) {
             Log.e(TAG, "[NAVIGATION] Failed to open Maximum Encryption module", e)
             Toast.makeText(
@@ -213,15 +202,23 @@ class TextEncryptionActivity : AppCompatActivity() {
 
                     withContext(Dispatchers.Main) {
                         if (!isFinishing && !isDestroyed) {
-                            mainTextBox.setText("🔒 [Encrypted File Loaded - Enter Password and press DECRYPT]")
-                            Toast.makeText(this@TextEncryptionActivity, "Encrypted payload loaded to memory", Toast.LENGTH_SHORT).show()
+                            mainTextBox.setText("\uD83D\uDD12 [Encrypted File Loaded - Enter Password and press DECRYPT]")
+                            Toast.makeText(
+                                this@TextEncryptionActivity,
+                                "Encrypted payload loaded to memory",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "[FILE_SYSTEM] Critical error parsing imported stream matrix entity structure", e)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@TextEncryptionActivity, "Failed to load document: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        this@TextEncryptionActivity,
+                        "Failed to load document: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             }
         }
@@ -250,9 +247,13 @@ class TextEncryptionActivity : AppCompatActivity() {
 
                 if (isEncrypt) {
                     val targetText = withContext(Dispatchers.Main) { mainTextBox.text.toString() }
-                    if (targetText.isEmpty() || targetText.startsWith("🔒 [Encrypted File Loaded")) {
+                    if (targetText.isEmpty() || targetText.startsWith("\uD83D\uDD12 [Encrypted File Loaded")) {
                         withContext(Dispatchers.Main) {
-                            Toast.makeText(this@TextEncryptionActivity, "Invalid target text for encryption", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                this@TextEncryptionActivity,
+                                "Invalid target text for encryption",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                         return@launch
                     }
@@ -272,8 +273,12 @@ class TextEncryptionActivity : AppCompatActivity() {
 
                         withContext(Dispatchers.Main) {
                             if (!isFinishing && !isDestroyed) {
-                                mainTextBox.setText("🔒 [Encryption Completed in Maximum Mode - Ready to Share or Save as TXT]")
-                                Toast.makeText(this@TextEncryptionActivity, "Encrypted successfully in memory", Toast.LENGTH_LONG).show()
+                                mainTextBox.setText("\uD83D\uDD12 [Encryption Completed in Maximum Mode - Ready to Share or Save as TXT]")
+                                Toast.makeText(
+                                    this@TextEncryptionActivity,
+                                    "Encrypted successfully in memory",
+                                    Toast.LENGTH_LONG
+                                ).show()
                             }
                         }
                     } else {
@@ -285,7 +290,11 @@ class TextEncryptionActivity : AppCompatActivity() {
                         withContext(Dispatchers.Main) {
                             if (!isFinishing && !isDestroyed) {
                                 mainTextBox.setText(encryptedText)
-                                Toast.makeText(this@TextEncryptionActivity, "Encryption Successful", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    this@TextEncryptionActivity,
+                                    "Encryption Successful",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         }
                     }
@@ -293,9 +302,13 @@ class TextEncryptionActivity : AppCompatActivity() {
                     Log.i(TAG, "[EXECUTION] Decryption Sequence Triggered.")
                     val cipherSource = importedPayload ?: withContext(Dispatchers.Main) { mainTextBox.text.toString() }
 
-                    if (cipherSource.isEmpty() || cipherSource.startsWith("🔒 [Encrypted File Loaded")) {
+                    if (cipherSource.isEmpty() || cipherSource.startsWith("\uD83D\uDD12 [Encrypted File Loaded")) {
                         withContext(Dispatchers.Main) {
-                            Toast.makeText(this@TextEncryptionActivity, "No encrypted target available", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                this@TextEncryptionActivity,
+                                "No encrypted target available",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                         return@launch
                     }
@@ -334,7 +347,9 @@ class TextEncryptionActivity : AppCompatActivity() {
                                     Log.d(TAG, "[DECRYPT_FLOW] Fallback matching triggered for MediumShort engine.")
                                     decryptedText = mediumShortEngine.decrypt(cipherSource, passwordChars)
                                     if (decryptedText != null) {
-                                        withContext(Dispatchers.Main) { rbMediumShort.isChecked = true }
+                                        withContext(Dispatchers.Main) {
+                                            rbMediumShort.isChecked = true
+                                        }
                                     }
                                 }
                             }
@@ -346,13 +361,27 @@ class TextEncryptionActivity : AppCompatActivity() {
                     withContext(Dispatchers.Main) {
                         if (!isFinishing && !isDestroyed) {
                             if (decryptedText != null) {
-                                Log.d(TAG, "[UI_UPDATE] Decryption sequence successful. Restoring plaintext to view.")
+                                Log.d(
+                                    TAG,
+                                    "[UI_UPDATE] Decryption sequence successful. Restoring plaintext to view."
+                                )
                                 mainTextBox.setText(decryptedText)
                                 importedPayload = null
-                                Toast.makeText(this@TextEncryptionActivity, "Decryption Successful", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    this@TextEncryptionActivity,
+                                    "Decryption Successful",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             } else {
-                                Log.w(TAG, "[DECRYPT_FLOW] Integrity validation failed. Decrypted text references null.")
-                                Toast.makeText(this@TextEncryptionActivity, "Decryption Failed: Invalid key or corrupted data", Toast.LENGTH_LONG).show()
+                                Log.w(
+                                    TAG,
+                                    "[DECRYPT_FLOW] Integrity validation failed. Decrypted text references null."
+                                )
+                                Toast.makeText(
+                                    this@TextEncryptionActivity,
+                                    "Decryption Failed: Invalid key or corrupted data",
+                                    Toast.LENGTH_LONG
+                                ).show()
                             }
                         }
                     }
@@ -361,7 +390,11 @@ class TextEncryptionActivity : AppCompatActivity() {
                 Log.e(TAG, "[COROUTINE_CRASH] Unhandled exception in processing thread scope!", e)
                 withContext(Dispatchers.Main) {
                     if (!isFinishing && !isDestroyed) {
-                        Toast.makeText(this@TextEncryptionActivity, "Process Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@TextEncryptionActivity,
+                            "Process Error: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             } finally {
@@ -383,15 +416,27 @@ class TextEncryptionActivity : AppCompatActivity() {
                 val txtFile = generateEncTxtFileStructure(textPayload, isTemporary = false)
                 withContext(Dispatchers.Main) {
                     if (txtFile != null) {
-                        Toast.makeText(this@TextEncryptionActivity, "Saved to: ${txtFile.absolutePath}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(
+                            this@TextEncryptionActivity,
+                            "Saved to: ${txtFile.absolutePath}",
+                            Toast.LENGTH_LONG
+                        ).show()
                     } else {
-                        Toast.makeText(this@TextEncryptionActivity, "Failed to write ENC TXT file structure", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@TextEncryptionActivity,
+                            "Failed to write ENC TXT file structure",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "[TXT_EXPORT] Execution error compiling stream data into file container", e)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@TextEncryptionActivity, "Error saving: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        this@TextEncryptionActivity,
+                        "Error saving: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             }
         }
@@ -428,7 +473,11 @@ class TextEncryptionActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e(TAG, "[SHARE_SYSTEM] Failed to invoke document container provider proxy link allocation", e)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@TextEncryptionActivity, "Sharing failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@TextEncryptionActivity,
+                        "Sharing failed: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
@@ -471,5 +520,20 @@ class TextEncryptionActivity : AppCompatActivity() {
         }
 
         return randomName.toString() + ".enc.txt"
+    }
+
+    private fun cleanupSensitiveState() {
+        try {
+            mainTextBox.text?.clear()
+            inputPassword.text?.clear()
+            importedPayload = null
+            pendingEncryptedPayload = null
+        } catch (_: Exception) {
+        }
+    }
+
+    override fun onDestroy() {
+        cleanupSensitiveState()
+        super.onDestroy()
     }
 }

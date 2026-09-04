@@ -1,23 +1,24 @@
-package com.example.lock
+package com.example.lock.text_encrypt
 
 import android.content.ClipboardManager
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
+import android.widget.Button
 import android.widget.EditText
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.example.lock.R
 import com.google.android.material.card.MaterialCardView
 
 class MaximumTextEncryptionActivity : AppCompatActivity() {
 
     private lateinit var mainTextBox: EditText
     private lateinit var inputPassword: EditText
-    private lateinit var btnPaste: android.widget.Button
-    private lateinit var btnClear: android.widget.Button
+    private lateinit var btnPaste: Button
+    private lateinit var btnClear: Button
     private lateinit var btnEncrypt: MaterialCardView
 
     private lateinit var rbMediumShort: RadioButton
@@ -39,6 +40,11 @@ class MaximumTextEncryptionActivity : AppCompatActivity() {
         initViews()
         setupInitialState()
         setupListeners()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        setupInitialState()
     }
 
     private fun initViews() {
@@ -72,24 +78,23 @@ class MaximumTextEncryptionActivity : AppCompatActivity() {
 
         rgMaximumAction.setOnCheckedChangeListener { _, checkedId ->
             if (checkedId == R.id.rb_max_decrypt) {
-                Toast.makeText(
-                    this,
-                    "Maximum decrypt screen will be added later",
-                    Toast.LENGTH_SHORT
-                ).show()
-
-                rbMaxEncrypt.isChecked = true
+                // اصلاح مسیر پکیج به پکیج صحیح text_encrypt
+                val intent = Intent().setClassName(
+                    packageName,
+                    "com.example.lock.text_encrypt.MaximumTextDecryptionActivity"
+                )
+                startActivity(intent)
+                finish()
             }
         }
 
         btnClear.setOnClickListener {
-            mainTextBox.text?.clear()
-            inputPassword.text?.clear()
+            cleanupSensitiveState()
             Toast.makeText(this, "Memory and UI cleared", Toast.LENGTH_SHORT).show()
         }
 
         btnPaste.setOnClickListener {
-            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
             if (clipboard.hasPrimaryClip() && (clipboard.primaryClip?.itemCount ?: 0) > 0) {
                 val pastedText = clipboard.primaryClip
                     ?.getItemAt(0)
@@ -123,21 +128,21 @@ class MaximumTextEncryptionActivity : AppCompatActivity() {
             return
         }
 
-        val plainChars = targetText.toCharArray()
-        val passwordChars = passwordText.toCharArray()
-
         try {
-            MaximumEncryptionProcessingActivity.setPayload(plainChars, passwordChars)
-
-            mainTextBox.text?.clear()
-            inputPassword.text?.clear()
+            MaximumEncryptionProcessingActivity.setPayload(
+                targetText.toCharArray(),
+                passwordText.toCharArray(),
+                false
+            )
 
             val intent = Intent(this, MaximumEncryptionProcessingActivity::class.java)
+
+            cleanupSensitiveState()
+
             startActivity(intent)
             finish()
-        } finally {
-            plainChars.fill('\u0000')
-            passwordChars.fill('\u0000')
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
         }
     }
 
