@@ -79,7 +79,7 @@ class ProcessingActivity : AppCompatActivity() {
         }
 
         btnDone.setOnClickListener {
-            if (currentMode == "DECRYPT" && btnDone.text.toString() == "BACK") {
+            if ((currentMode == "DECRYPT" || currentMode == "METADATA_PURGE") && btnDone.text.toString() == "BACK") {
                 finish()
                 return@setOnClickListener
             }
@@ -122,6 +122,7 @@ class ProcessingActivity : AppCompatActivity() {
         statusText.text = when (currentMode) {
             "ENCRYPT" -> "Encrypting......"
             "DECRYPT" -> "Decrypting......"
+            "METADATA_PURGE" -> "Purging Metadata..."
             else -> "Processing..."
         }
         statusText.setTextColor(Color.parseColor("#FF1744"))
@@ -150,6 +151,7 @@ class ProcessingActivity : AppCompatActivity() {
                     when (mode) {
                         "ENCRYPT" -> performEncryption(filePaths, password, secondPassword, encType, engineTypeStr, secondEngineTypeStr, isDual, deleteAfter)
                         "DECRYPT" -> performDecryption(filePaths, password, secondDecryptPassword)
+                        "METADATA_PURGE" -> performMetadataPurge(filePaths)
                         else -> {
                             Log.w(TAG, "Unknown mode encountered: $mode")
                             false
@@ -187,6 +189,39 @@ class ProcessingActivity : AppCompatActivity() {
         }
     }
 
+    private fun performMetadataPurge(filePaths: ArrayList<String>): Boolean {
+        Log.d(TAG, "performMetadataPurge started with ${filePaths.size} paths")
+        val files = filePaths.map { File(it) }.filter { it.exists() && it.isFile }
+        if (files.isEmpty()) {
+            Log.w(TAG, "performMetadataPurge: No valid files found.")
+            return false
+        }
+
+        var allSuccess = true
+        val totalFiles = files.size
+        var completedFiles = 0
+
+        for (file in files) {
+            if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")
+            try {
+                Log.d(TAG, "Purging metadata for file: ${file.absolutePath}")
+                lifecycleScope.launch { updateStageOnMainThread("Purging ${file.name}") }
+
+                MetadataPurgeProcessor.purgeFile(file)
+
+                completedFiles++
+                val percent = (completedFiles * 100) / totalFiles
+                lifecycleScope.launch { updateProgressOnMainThread(percent) }
+            } catch (e: Exception) {
+                if (e is CancellationException || isCancelledFlag) throw e
+                allSuccess = false
+                Log.e(TAG, "Exception purging metadata for ${file.name}: ${e.message}", e)
+            }
+        }
+        Log.d(TAG, "performMetadataPurge completed with status: $allSuccess")
+        return allSuccess
+    }
+
     private fun performEncryption(
         filePaths: ArrayList<String>,
         password: String,
@@ -202,6 +237,10 @@ class ProcessingActivity : AppCompatActivity() {
         if (files.isEmpty()) {
             Log.w(TAG, "performEncryption: No valid files found.")
             return false
+        }
+
+        files.forEach { file ->
+            MetadataPurgeProcessor.purgeFile(file)
         }
 
         val mode = when (encType) {
@@ -271,7 +310,6 @@ class ProcessingActivity : AppCompatActivity() {
                     lifecycleScope.launch { updateStageOnMainThread("Decrypting ${inputFile.name}") }
 
                     if (secondDecryptPassword.isNotBlank()) {
-                        Log.d(TAG, "Routing to decryptDualLayerFlow")
                         decryptDualLayerFlow(
                             inputFile = inputFile,
                             firstPassword = password,
@@ -282,7 +320,6 @@ class ProcessingActivity : AppCompatActivity() {
                             totalFiles = totalFiles
                         )
                     } else {
-                        Log.d(TAG, "Routing to decryptSingleFlow")
                         decryptSingleFlow(
                             inputFile = inputFile,
                             password = password,
@@ -319,11 +356,9 @@ class ProcessingActivity : AppCompatActivity() {
     ) {
         if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")
         val engineType = EngineType.detectFromFile(inputFile) ?: EngineType.MAX
-        Log.d(TAG, "decryptSingleFlow detected EngineType: $engineType for file: ${inputFile.name}")
 
         val decryptedFile: File = when (engineType) {
             EngineType.MAX -> {
-                Log.d(TAG, "Using MAX engine for decryption")
                 EncryptionManager().decryptFile(
                     inputFile = inputFile,
                     outputDirectory = workDirectory,
@@ -337,32 +372,24 @@ class ProcessingActivity : AppCompatActivity() {
                 )
             }
             EngineType.MEDIUM -> {
-                Log.d(TAG, "Using MEDIUM engine for decryption")
                 if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")
                 decryptWithLockSingle(inputFile, workDirectory, password)
             }
             EngineType.EASY -> {
-                Log.d(TAG, "Using EASY (LightEncryptionManager) engine for decryption")
-                try {
-                    LightEncryptionManager().decryptFile(
-                        inputFile = inputFile,
-                        outputDirectory = workDirectory,
-                        password = password.toCharArray(),
-                        isCancelled = { isCancelledFlag },
-                        onProgress = { snap: LightEncryptionManager.ProgressSnapshot ->
-                            val base = (completedFiles * 100) / totalFiles
-                            val portion = snap.percent / totalFiles
-                            lifecycleScope.launch { updateProgressOnMainThread((base + portion).coerceIn(0, 100)) }
-                        }
-                    )
-                } catch (e: Exception) {
-                    Log.e(TAG, "LightEncryptionManager decryption threw exception: ${e.message}", e)
-                    throw e
-                }
+                LightEncryptionManager().decryptFile(
+                    inputFile = inputFile,
+                    outputDirectory = workDirectory,
+                    password = password.toCharArray(),
+                    isCancelled = { isCancelledFlag },
+                    onProgress = { snap: LightEncryptionManager.ProgressSnapshot ->
+                        val base = (completedFiles * 100) / totalFiles
+                        val portion = snap.percent / totalFiles
+                        lifecycleScope.launch { updateProgressOnMainThread((base + portion).coerceIn(0, 100)) }
+                    }
+                )
             }
         }
 
-        Log.d(TAG, "decryptSingleFlow finished. Artifact produced: ${decryptedFile.absolutePath}")
         handleDecryptedArtifact(decryptedFile, password, finalOutputDirectory, workDirectory, 0)
     }
 
@@ -377,7 +404,6 @@ class ProcessingActivity : AppCompatActivity() {
     ) {
         if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")
         val outerEngineType = EngineType.detectFromFile(inputFile) ?: EngineType.MAX
-        Log.d(TAG, "decryptDualLayerFlow detected outer EngineType: $outerEngineType for file: ${inputFile.name}")
 
         val outerDecryptedFile: File = when (outerEngineType) {
             EngineType.MAX -> {
@@ -475,19 +501,15 @@ class ProcessingActivity : AppCompatActivity() {
         depth: Int
     ) {
         if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")
-        Log.d(TAG, "handleDecryptedArtifact at depth $depth for artifact: ${artifact.absolutePath}, isDirectory: ${artifact.isDirectory}")
         if (depth > 8) {
-            Log.w(TAG, "Max depth exceeded in handleDecryptedArtifact. Moving as-is.")
             val savedFile = moveFileToDirectory(artifact, finalOutputDirectory)
+            MetadataPurgeProcessor.purgeFile(savedFile)
             if (intent.getBooleanExtra("IS_EPHEMERAL", false)) {
                 lifecycleScope.launch(Dispatchers.Main) { openEphemeralFile(savedFile) }
             }
             return
         }
-        if (!artifact.exists()) {
-            Log.w(TAG, "handleDecryptedArtifact: artifact does not exist.")
-            return
-        }
+        if (!artifact.exists()) return
 
         if (artifact.isDirectory) {
             val children = artifact.listFiles()?.toList().orEmpty()
@@ -501,7 +523,6 @@ class ProcessingActivity : AppCompatActivity() {
         }
 
         if (isZipFile(artifact)) {
-            Log.d(TAG, "Artifact is a ZIP file, extracting...")
             lifecycleScope.launch { updateStageOnMainThread("Auto extracting ${artifact.name}") }
             val extractDir = File(workDirectory, "extract_${System.nanoTime()}")
             extractDir.mkdirs()
@@ -517,7 +538,6 @@ class ProcessingActivity : AppCompatActivity() {
         }
 
         if (isEncryptedFile(artifact)) {
-            Log.d(TAG, "Artifact is a nested encrypted file, decrypting inner layer...")
             lifecycleScope.launch { updateStageOnMainThread("Decrypting inner layer") }
             val innerEngineType = EngineType.detectFromFile(artifact) ?: EngineType.MAX
             val innerDecrypted: File = when (innerEngineType) {
@@ -531,7 +551,8 @@ class ProcessingActivity : AppCompatActivity() {
         }
 
         val savedFile = moveFileToDirectory(artifact, finalOutputDirectory)
-        Log.d(TAG, "Final artifact saved to: ${savedFile.absolutePath}")
+        MetadataPurgeProcessor.purgeFile(savedFile)
+
         if (intent.getBooleanExtra("IS_EPHEMERAL", false)) {
             lifecycleScope.launch(Dispatchers.Main) { openEphemeralFile(savedFile) }
         }
@@ -617,9 +638,19 @@ class ProcessingActivity : AppCompatActivity() {
         progressBar.visibility = View.GONE
         btnCancel.visibility = View.GONE
         statusText.setTextColor(Color.parseColor("#00FF66"))
-        statusText.text = if (currentMode == "ENCRYPT") "Encryption Completed Successfully" else "Decryption Completed Successfully"
+        statusText.text = when (currentMode) {
+            "ENCRYPT" -> "Encryption Completed Successfully"
+            "DECRYPT" -> "Decryption Completed Successfully"
+            "METADATA_PURGE" -> "Metadata Purged Successfully"
+            else -> "Completed Successfully"
+        }
         percentText.text = "100%"
-        stageText.text = if (currentMode == "ENCRYPT") "Files saved inside the ENC" else "Files saved inside the DEC"
+        stageText.text = when (currentMode) {
+            "ENCRYPT" -> "Files saved inside the ENC"
+            "DECRYPT" -> "Files saved inside the DEC"
+            "METADATA_PURGE" -> "Metadata successfully removed from files"
+            else -> "Done"
+        }
         btnDone.visibility = View.VISIBLE
         btnDone.text = "DONE"
     }

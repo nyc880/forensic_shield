@@ -9,8 +9,6 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.example.lock.crypto.NistPurgeEngine
-import com.example.lock.crypto.MetadataSanitizer
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -127,9 +125,8 @@ class SafeDeleteActivity : AppCompatActivity() {
         for (file in files) {
             if (file.isDirectory) {
                 file.walkBottomUp().forEach { child ->
-                    if (child.isFile) plan.add(child)
+                    plan.add(child)
                 }
-                plan.add(file)
             } else {
                 plan.add(file)
             }
@@ -140,28 +137,16 @@ class SafeDeleteActivity : AppCompatActivity() {
     private fun safeDeleteTarget(target: File): Boolean {
         return try {
             if (target.isDirectory) {
-                target.walkBottomUp().forEach { file ->
-                    if (file.isFile) {
-                        val uri = Uri.fromFile(file)
-                        NistPurgeEngine.sanitizeOriginalFile(this, uri)
-                        MetadataSanitizer.sanitizeMediaStoreAfterDelete(this, file)
-                    }
-                }
-                target.deleteRecursively()
-            } else {
-                val uri = Uri.fromFile(target)
-                NistPurgeEngine.sanitizeOriginalFile(this, uri)
-                MetadataSanitizer.sanitizeMediaStoreAfterDelete(this, target)
-                target.delete()
-            }
-            !target.exists()
-        } catch (_: Exception) {
-            try {
                 target.delete()
                 !target.exists()
-            } catch (_: Exception) {
-                false
+            } else {
+                val uri = Uri.fromFile(target)
+                val sanitized = NistPurgeEngine.sanitizeOriginalFile(this, uri)
+                val metaSanitized = MetadataSanitizer.sanitizeMediaStoreAfterDelete(this, target)
+                sanitized && metaSanitized && !target.exists()
             }
+        } catch (_: Exception) {
+            false
         }
     }
 

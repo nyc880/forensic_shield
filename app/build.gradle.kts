@@ -3,6 +3,7 @@ val argon2Version = "2.7"
 val securityCryptoVersion = "1.1.0-alpha06"
 val roomVersion = "2.6.1"
 val splashScreenVersion = "1.0.1"
+val exifInterfaceVersion = "1.3.7"
 val compileSdkVer = 36
 val minSdkVer = 26
 val targetSdkVer = 36
@@ -43,7 +44,8 @@ android {
             )
         }
         debug {
-            isMinifyEnabled = true
+            isMinifyEnabled = false // اصلاح شد تا سرعت بیلد در حالت دیباگ بالا بماند
+            isDebuggable = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -59,6 +61,14 @@ android {
     kotlinOptions {
         jvmTarget = jvmTargetVer
     }
+
+    packaging {
+        resources.excludes.add("META-INF/LICENSE.md")
+        resources.excludes.add("META-INF/NOTICE.md")
+        resources.excludes.add("META-INF/NOTICE")
+        resources.excludes.add("META-INF/LICENSE")
+        resources.excludes.add("META-INF/DEPENDENCIES")
+    }
 }
 
 dependencies {
@@ -69,10 +79,13 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
 
     implementation("androidx.core:core-splashscreen:$splashScreenVersion")
+    implementation("androidx.exifinterface:exifinterface:$exifInterfaceVersion")
 
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     kapt("androidx.room:room-compiler:$roomVersion")
+
+    implementation("org.apache.commons:commons-imaging:1.0.0-alpha5")
 
     implementation("org.bouncycastle:bcprov-jdk18on:$bouncyCastleVersion")
     implementation("de.mkammerer:argon2-jvm:$argon2Version")
