@@ -28,7 +28,6 @@ class MaximumDecryptionResultActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // محافظت امنیتی صفحه در برابر اسکرین‌شات و ضبط صفحه
         window.setFlags(
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE
@@ -36,7 +35,6 @@ class MaximumDecryptionResultActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_decryption_result)
 
-        // مدیریت دکمه بازگشت سخت‌افزاری برای خروج امن و پاکسازی
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 cleanupTempFile()

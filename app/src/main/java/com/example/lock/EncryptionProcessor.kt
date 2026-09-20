@@ -49,7 +49,15 @@ class EncryptionProcessor(private val context: Context) {
         }
 
         val validFiles = files.filter { it.exists() && it.isFile }
-        if (validFiles.isEmpty()) return
+        if (validFiles.isEmpty()) {
+            Log.e(LOG_TAG, "No existing files to encrypt. paths=${files.map { it.absolutePath }}")
+            throw IOException("No valid files to encrypt (source path missing)")
+        }
+
+        Log.d(
+            LOG_TAG,
+            "execute start count=${validFiles.size} engine=$engineType secondEngine=$secondEngineType mode=$mode dual=$isDualPassword target=${targetDir.absolutePath}"
+        )
 
         val isZipMode = mode == MODE_JUST_ZIP
 
@@ -57,6 +65,7 @@ class EncryptionProcessor(private val context: Context) {
             for ((index, file) in validFiles.withIndex()) {
                 var outFile: File? = null
                 try {
+                    Log.d(LOG_TAG, "Encrypting ${file.absolutePath} size=${file.length()} engine=$engineType")
                     outFile = if (!isDualPassword) {
                         runSingleEncryption(file, targetDir, password, engineType) { p ->
                             val base = (index * 100) / validFiles.size
@@ -71,6 +80,7 @@ class EncryptionProcessor(private val context: Context) {
                             onProgress?.invoke((base + portion).coerceIn(0, 100), "Dual ${file.name}... $p%")
                         }
                     }
+                    Log.d(LOG_TAG, "Encrypted output: ${outFile.absolutePath} size=${outFile.length()}")
                     onProgress?.invoke(((index + 1) * 100 / validFiles.size).coerceIn(0, 100), "Completed ${file.name}")
                     if (deleteAfterEncryption) secureDelete(file)
                 } catch (e: Exception) {
@@ -83,6 +93,7 @@ class EncryptionProcessor(private val context: Context) {
             var tempZip: File? = null
             try {
                 for ((index, file) in validFiles.withIndex()) {
+                    Log.d(LOG_TAG, "ZIP-mode encrypting ${file.absolutePath} size=${file.length()} engine=$engineType")
                     val encFile = if (!isDualPassword) {
                         runSingleEncryption(file, context.cacheDir, password, engineType) { p ->
                             val phase = (index * 30) / validFiles.size + (p / (3 * validFiles.size))
@@ -98,7 +109,9 @@ class EncryptionProcessor(private val context: Context) {
                     tempEncryptedFiles.add(encFile)
                 }
 
-                if (tempEncryptedFiles.isEmpty()) return
+                if (tempEncryptedFiles.isEmpty()) {
+                    throw IOException("No encrypted files produced for ZIP mode")
+                }
 
                 onProgress?.invoke(40, "Creating ZIP of encrypted files...")
                 tempZip = File(context.cacheDir, EngineType.randomName() + ".zip")
@@ -115,6 +128,7 @@ class EncryptionProcessor(private val context: Context) {
                     finalZipEnc.delete()
                 }
 
+                Log.d(LOG_TAG, "ZIP.ENC created: ${finalWithZipExt.absolutePath} size=${finalWithZipExt.length()}")
                 onProgress?.invoke(100, "ZIP.ENC created: ${finalWithZipExt.name}")
 
                 if (deleteAfterEncryption) {

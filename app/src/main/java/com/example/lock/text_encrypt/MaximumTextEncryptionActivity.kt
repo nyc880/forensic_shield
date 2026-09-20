@@ -78,7 +78,7 @@ class MaximumTextEncryptionActivity : AppCompatActivity() {
 
         rgMaximumAction.setOnCheckedChangeListener { _, checkedId ->
             if (checkedId == R.id.rb_max_decrypt) {
-                // اصلاح مسیر پکیج به پکیج صحیح text_encrypt
+
                 val intent = Intent().setClassName(
                     packageName,
                     "com.example.lock.text_encrypt.MaximumTextDecryptionActivity"

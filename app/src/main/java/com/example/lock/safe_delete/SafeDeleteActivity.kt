@@ -1,14 +1,15 @@
-package com.example.lock
+package com.example.lock.safe_delete
 
 import android.content.Intent
 import android.graphics.Color
-import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.example.lock.MainActivity
+import com.example.lock.R
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -23,6 +24,8 @@ class SafeDeleteActivity : AppCompatActivity() {
     private lateinit var percentText: TextView
     private lateinit var stageText: TextView
     private lateinit var btnDone: MaterialButton
+
+    private val failedTargets = mutableListOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,49 +71,41 @@ class SafeDeleteActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    val targets = filePaths
-                        .map { File(it) }
-                        .filter { it.exists() }
+                    val deletePlan = buildDeletePlan(filePaths.map { File(it) })
 
-                    if (targets.isEmpty()) {
+                    if (deletePlan.isEmpty()) {
                         false
                     } else {
-                        val deletePlan = buildDeletePlan(targets)
+                        var allSuccess = true
+                        val total = deletePlan.size
 
-                        if (deletePlan.isEmpty()) {
-                            false
-                        } else {
-                            var allSuccess = true
-                            val total = deletePlan.size
+                        deletePlan.forEachIndexed { index, target ->
+                            updateProgress(
+                                processed = index,
+                                total = total,
+                                stage = "Secure deleting ${target.name}..."
+                            )
 
-                            deletePlan.forEachIndexed { index, target ->
-                                updateProgress(
-                                    processed = index,
-                                    total = total,
-                                    stage = "Secure deleting ${target.name}..."
-                                )
-
-                                val success = safeDeleteTarget(target)
-
-                                if (!success) {
-                                    allSuccess = false
-                                }
-
-                                updateProgress(
-                                    processed = index + 1,
-                                    total = total,
-                                    stage = "Secure deleting ${target.name}..."
-                                )
+                            val success = safeDeleteTarget(target)
+                            if (!success) {
+                                allSuccess = false
+                                failedTargets.add(target.name)
                             }
-                            allSuccess
+
+                            updateProgress(
+                                processed = index + 1,
+                                total = total,
+                                stage = "Secure deleting ${target.name}..."
+                            )
                         }
+                        allSuccess
                     }
                 }
 
                 if (result) {
                     showSuccess()
                 } else {
-                    showError("Some files could not be securely deleted")
+                    showError(buildErrorMessage())
                 }
 
             } catch (e: Exception) {
@@ -119,35 +114,33 @@ class SafeDeleteActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Keeps top-level user selections intact; directories are handled
+     * recursively by SecureDelete.deleteTree.
+     */
     private fun buildDeletePlan(files: List<File>): List<File> {
-        val plan = mutableListOf<File>()
-
-        for (file in files) {
-            if (file.isDirectory) {
-                file.walkBottomUp().forEach { child ->
-                    plan.add(child)
-                }
-            } else {
-                plan.add(file)
-            }
-        }
-        return plan
+        return files.filter { it.exists() }
     }
 
     private fun safeDeleteTarget(target: File): Boolean {
         return try {
             if (target.isDirectory) {
-                target.delete()
-                !target.exists()
+                SecureDelete.deleteTree(this, target)
             } else {
-                val uri = Uri.fromFile(target)
-                val sanitized = NistPurgeEngine.sanitizeOriginalFile(this, uri)
-                val metaSanitized = MetadataSanitizer.sanitizeMediaStoreAfterDelete(this, target)
-                sanitized && metaSanitized && !target.exists()
+                // Report API: the engine logs overwrite / verify / delete / gone
+                // under the "SecureDeleteEngine" tag for each file.
+                SecureDelete.deleteFileWithReport(this, target).success
             }
         } catch (_: Exception) {
             false
         }
+    }
+
+    private fun buildErrorMessage(): String {
+        if (failedTargets.isEmpty()) return "Some files could not be securely deleted"
+        val shown = failedTargets.take(5).joinToString(", ")
+        val extra = if (failedTargets.size > 5) " (+${failedTargets.size - 5} more)" else ""
+        return "Not fully deleted: $shown$extra"
     }
 
     private fun updateProgress(processed: Int, total: Int, stage: String) {
@@ -157,15 +150,11 @@ class SafeDeleteActivity : AppCompatActivity() {
             ((processed.toDouble() / total.toDouble()) * 100.0).roundToInt()
         }
 
-        runOnThread {
+        runOnUiThread {
             progressBar.progress = percent.coerceIn(0, 100)
             percentText.text = "${percent.coerceIn(0, 100)}%"
             stageText.text = stage
         }
-    }
-
-    private fun runOnThread(block: () -> Unit) {
-        runOnUiThread(block)
     }
 
     private fun showSuccess() {

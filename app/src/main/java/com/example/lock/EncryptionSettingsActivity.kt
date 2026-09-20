@@ -1,7 +1,9 @@
 package com.example.lock
 
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.Rect
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
@@ -30,10 +32,12 @@ class EncryptionSettingsActivity : AppCompatActivity() {
     private lateinit var deleteCheckBox: MaterialCheckBox
     private lateinit var startBtn: Button
 
+    private var isKeyboardOpen = false
+
     enum class EngineType(val display: String, val colorHex: String, val bgHex: String) {
         MAX("max encryption (AES-256 + CHACHA20)", "#FF1744", "#26FF1744"),
-        MEDIUM("medium encryption (AES-256)", "#FF9800", "#26FF9800"),
-        EASY("easy encryption (CHACHA20)", "#64B5F6", "#2664B5F6")
+        MEDIUM("medium encryption ( AES-256 )", "#FF9800", "#26FF9800"),
+        EASY("fast encryption ( X-chacha20 )", "#64B5F6", "#2664B5F6")
     }
 
     private var selectedEngine = EngineType.MAX
@@ -67,7 +71,7 @@ class EncryptionSettingsActivity : AppCompatActivity() {
 
         setupEngineDropdown()
         setupDualPasswordToggle()
-        setupHideKeyboardOnBackgroundTap()
+        setupKeyboardCloseListener()
 
         startBtn.setOnClickListener {
             hideKeyboard()
@@ -119,6 +123,21 @@ class EncryptionSettingsActivity : AppCompatActivity() {
         }
     }
 
+    override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
+        if (ev?.action == MotionEvent.ACTION_DOWN) {
+            val v = currentFocus
+            if (v is TextInputEditText || v is AutoCompleteTextView) {
+                val outRect = Rect()
+                v.getGlobalVisibleRect(outRect)
+                if (!outRect.contains(ev.rawX.toInt(), ev.rawY.toInt())) {
+                    v.clearFocus()
+                    hideKeyboard()
+                }
+            }
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
     private fun setupEngineDropdown() {
         val items = EngineType.values().map { it.display }
         val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, items)
@@ -136,11 +155,19 @@ class EncryptionSettingsActivity : AppCompatActivity() {
     private fun applyEngineColor(type: EngineType) {
         val color = Color.parseColor(type.colorHex)
         val bgColor = Color.parseColor(type.bgHex)
+        val colorState = ColorStateList.valueOf(color)
+        val bgState = ColorStateList.valueOf(bgColor)
 
         dropdownEngine.setTextColor(color)
         tilEngineDropdown.boxStrokeColor = color
-        tilEngineDropdown.setBoxBackgroundColorStateList(android.content.res.ColorStateList.valueOf(bgColor))
-        tilEngineDropdown.setEndIconTintList(android.content.res.ColorStateList.valueOf(color))
+        tilEngineDropdown.setBoxBackgroundColorStateList(bgState)
+        tilEngineDropdown.setEndIconTintList(colorState)
+
+        tilPassword.boxStrokeColor = color
+        tilPassword.setBoxBackgroundColorStateList(bgState)
+        tilPassword.hintTextColor = colorState
+        tilPassword.defaultHintTextColor = colorState
+        tilPassword.setEndIconTintList(colorState)
     }
 
     private fun setupDualPasswordToggle() {
@@ -153,13 +180,17 @@ class EncryptionSettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupHideKeyboardOnBackgroundTap() {
-        rootView.setOnTouchListener { _, event ->
-            if (event.action == MotionEvent.ACTION_DOWN) {
+    private fun setupKeyboardCloseListener() {
+        rootView.viewTreeObserver.addOnGlobalLayoutListener {
+            val r = Rect()
+            rootView.getWindowVisibleDisplayFrame(r)
+            val screenHeight = rootView.rootView.height
+            val keypadHeight = screenHeight - r.bottom
+            val isOpen = keypadHeight > screenHeight * 0.15
+            if (isKeyboardOpen && !isOpen) {
                 currentFocus?.clearFocus()
-                hideKeyboard()
             }
-            false
+            isKeyboardOpen = isOpen
         }
     }
 

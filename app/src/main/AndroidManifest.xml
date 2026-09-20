@@ -17,14 +17,21 @@
         tools:replace="android:allowBackup">
 
         <activity
-            android:name="com.example.lock.MainActivity"
+            android:name="com.example.lock.SplashActivity"
             android:exported="true"
-            android:launchMode="singleTask">
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.LOCK">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name="com.example.lock.MainActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait" />
 
         <activity
             android:name="com.example.lock.DecryptionHandlerActivity"
@@ -101,7 +108,6 @@
             </intent-filter>
         </activity>
 
-        <!-- بخش ماژول رمزنگاری متن (text_encrypt) -->
         <activity
             android:name="com.example.lock.text_encrypt.TextEncryptionActivity"
             android:exported="false"
@@ -123,11 +129,6 @@
             android:screenOrientation="portrait" />
 
         <activity
-            android:name="com.example.lock.text_encrypt.MaximumDecryptionProcessingActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
-
-        <activity
             android:name="com.example.lock.text_encrypt.MaximumEncryptionResultActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
@@ -137,7 +138,6 @@
             android:exported="false"
             android:screenOrientation="portrait" />
 
-        <!-- سایر اکتیویتی‌های برنامه -->
         <activity
             android:name="com.example.lock.FileBrowserActivity"
             android:exported="false"
@@ -164,12 +164,12 @@
             android:screenOrientation="portrait" />
 
         <activity
-            android:name="com.example.lock.SafeDeleteConfirmActivity"
+            android:name="com.example.lock.safe_delete.SafeDeleteConfirmActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 
         <activity
-            android:name="com.example.lock.SafeDeleteActivity"
+            android:name="com.example.lock.safe_delete.SafeDeleteActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 

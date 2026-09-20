@@ -207,7 +207,11 @@ class ProcessingActivity : AppCompatActivity() {
                 Log.d(TAG, "Purging metadata for file: ${file.absolutePath}")
                 lifecycleScope.launch { updateStageOnMainThread("Purging ${file.name}") }
 
-                MetadataPurgeProcessor.purgeFile(file)
+                val purged = MetadataPurgeProcessor.purgeFile(file)
+                if (purged == null) {
+                    allSuccess = false
+                    Log.e(TAG, "Metadata purge FAILED for ${file.name}")
+                }
 
                 completedFiles++
                 val percent = (completedFiles * 100) / totalFiles
@@ -239,10 +243,6 @@ class ProcessingActivity : AppCompatActivity() {
             return false
         }
 
-        files.forEach { file ->
-            MetadataPurgeProcessor.purgeFile(file)
-        }
-
         val mode = when (encType) {
             "JUST_FILES" -> EncryptionProcessor.MODE_JUST_FILES
             "JUST_ZIP" -> EncryptionProcessor.MODE_JUST_ZIP
@@ -254,6 +254,10 @@ class ProcessingActivity : AppCompatActivity() {
         val secondEngineType = EngineType.fromString(secondEngineTypeStr)
 
         return try {
+            Log.d(
+                TAG,
+                "Starting engine encryption. engine=$engineType files=${files.size} mode=$mode deleteAfter=$deleteAfter"
+            )
             val processor = EncryptionProcessor(this)
             processor.execute(
                 files = files,
@@ -503,7 +507,6 @@ class ProcessingActivity : AppCompatActivity() {
         if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")
         if (depth > 8) {
             val savedFile = moveFileToDirectory(artifact, finalOutputDirectory)
-            MetadataPurgeProcessor.purgeFile(savedFile)
             if (intent.getBooleanExtra("IS_EPHEMERAL", false)) {
                 lifecycleScope.launch(Dispatchers.Main) { openEphemeralFile(savedFile) }
             }
@@ -551,7 +554,6 @@ class ProcessingActivity : AppCompatActivity() {
         }
 
         val savedFile = moveFileToDirectory(artifact, finalOutputDirectory)
-        MetadataPurgeProcessor.purgeFile(savedFile)
 
         if (intent.getBooleanExtra("IS_EPHEMERAL", false)) {
             lifecycleScope.launch(Dispatchers.Main) { openEphemeralFile(savedFile) }

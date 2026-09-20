@@ -8,8 +8,10 @@ import android.os.Bundle
 import android.os.Environment
 import android.util.Base64
 import android.util.Log
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ProgressBar
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.Toast
@@ -43,6 +45,7 @@ class TextEncryptionActivity : AppCompatActivity() {
     private lateinit var btnDecrypt: MaterialCardView
     private lateinit var btnSave: MaterialCardView
     private lateinit var btnImport: MaterialCardView
+    private lateinit var loadingProgressBar: ProgressBar
 
     private lateinit var rgEncryptionTier: RadioGroup
     private lateinit var rbMediumShort: RadioButton
@@ -87,10 +90,28 @@ class TextEncryptionActivity : AppCompatActivity() {
         btnDecrypt = findViewById(R.id.btn_decrypt)
         btnSave = findViewById(R.id.btn_save)
         btnImport = findViewById(R.id.btn_import)
+        loadingProgressBar = findViewById(R.id.loading_progress_bar)
 
         rgEncryptionTier = findViewById(R.id.rg_encryption_tier)
         rbMediumShort = findViewById(R.id.rb_medium_short)
         rbMaximum = findViewById(R.id.rb_maximum)
+    }
+
+    private fun setLoadingState(isLoading: Boolean) {
+        loadingProgressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+
+        btnEncrypt.isEnabled = !isLoading
+        btnDecrypt.isEnabled = !isLoading
+        btnSave.isEnabled = !isLoading
+        btnImport.isEnabled = !isLoading
+        btnShare.isEnabled = !isLoading
+        btnClear.isEnabled = !isLoading
+        btnCopy.isEnabled = !isLoading
+        btnPaste.isEnabled = !isLoading
+        mainTextBox.isEnabled = !isLoading
+        inputPassword.isEnabled = !isLoading
+        rbMediumShort.isEnabled = !isLoading
+        rbMaximum.isEnabled = !isLoading
     }
 
     private fun initFilePicker() {
@@ -168,6 +189,15 @@ class TextEncryptionActivity : AppCompatActivity() {
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 type = "*/*"
+                putExtra(
+                    Intent.EXTRA_MIME_TYPES,
+                    arrayOf(
+                        "text/plain",
+                        "application/pdf",
+                        "application/msword",
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    )
+                )
             }
             filePickerLauncher.launch(intent)
         }
@@ -190,6 +220,7 @@ class TextEncryptionActivity : AppCompatActivity() {
     }
 
     private fun readImportedFileContent(uri: Uri) {
+        setLoadingState(true)
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 Log.d(TAG, "[FILE_SYSTEM] Opening InputStream to extract encrypted stream data payload.")
@@ -220,6 +251,12 @@ class TextEncryptionActivity : AppCompatActivity() {
                         Toast.LENGTH_LONG
                     ).show()
                 }
+            } finally {
+                withContext(Dispatchers.Main) {
+                    if (!isFinishing && !isDestroyed) {
+                        setLoadingState(false)
+                    }
+                }
             }
         }
     }
@@ -238,6 +275,8 @@ class TextEncryptionActivity : AppCompatActivity() {
             Log.w(TAG, "[VALIDATION] Password character conversion failed or empty.")
             return
         }
+
+        setLoadingState(true)
 
         Log.d(TAG, "[COROUTINE] Launching lifecycleScope block. Active Thread: ${Thread.currentThread().name}")
 
@@ -263,7 +302,7 @@ class TextEncryptionActivity : AppCompatActivity() {
                         val plainChars = targetText.toCharArray()
 
                         Log.d(TAG, "[ENGINE_CALL] Invoking maxEngine.encrypt")
-                        val encryptedBytes = maxEngine.encrypt(plainChars, passwordChars)
+                        val encryptedBytes = maxEngine.encrypt(plainChars, passwordChars.copyOf())
                         plainChars.fill('\u0000')
 
                         Log.d(TAG, "[POST_PROCESS] Converting binary structure to Base64")
@@ -283,7 +322,7 @@ class TextEncryptionActivity : AppCompatActivity() {
                         }
                     } else {
                         Log.i(TAG, "[EXECUTION] MediumShort Mode Selected. Invoking encryption engine.")
-                        val encryptedText = mediumShortEngine.encrypt(targetText, passwordChars)
+                        val encryptedText = mediumShortEngine.encrypt(targetText, passwordChars.copyOf())
 
                         pendingEncryptedPayload = encryptedText
 
@@ -320,37 +359,45 @@ class TextEncryptionActivity : AppCompatActivity() {
                         Log.d(TAG, "[DECRYPT_FLOW] Parsing Base64 payload structure.")
                         val decodedBytes = Base64.decode(cipherSource, Base64.URL_SAFE or Base64.NO_WRAP)
                         if (decodedBytes.isNotEmpty()) {
+                            // The packet is recognized by the engine itself (versions 0x07/0x08).
                             val version = decodedBytes[0]
-                            Log.d(TAG, "[DECRYPT_FLOW] Magic / Version byte detected: $version")
+                            val belongsToMediumShort =
+                                MediumShortEncryptionEngine.isOwnPacket(cipherSource)
+                            Log.d(
+                                TAG,
+                                "[DECRYPT_FLOW] Version byte: $version, " +
+                                        "MediumShort engine: $belongsToMediumShort"
+                            )
 
-                            if (version == 0x07.toByte()) {
+                            // 1) MediumShort engine (v7 legacy PBKDF2 and v8 Argon2id).
+                            //    NOTE: every attempt receives its own copy of the password, because
+                            //    the MAX engine zeroes the character array it is given.
+                            if (belongsToMediumShort) {
                                 Log.d(TAG, "[DECRYPT_FLOW] Routing to MediumShort engine decryptor.")
-                                decryptedText = mediumShortEngine.decrypt(cipherSource, passwordChars)
+                                decryptedText = mediumShortEngine.decrypt(cipherSource, passwordChars.copyOf())
                                 if (decryptedText != null) {
                                     withContext(Dispatchers.Main) { rbMediumShort.isChecked = true }
                                 }
                             }
 
+                            // 2) MAX engine (its container format has no version byte).
                             if (decryptedText == null) {
-                                if (rbMaximum.isChecked || version != 0x07.toByte()) {
-                                    Log.d(TAG, "[DECRYPT_FLOW] Routing to Maximum Crypto engine decryptor block.")
-                                    maxEngine.decryptAndConsume(decodedBytes, passwordChars) { decryptedChars ->
-                                        decryptedText = String(decryptedChars)
-                                        isMaxSuccessful = true
-                                    }
-                                    if (isMaxSuccessful) {
-                                        withContext(Dispatchers.Main) { rbMaximum.isChecked = true }
-                                    }
+                                Log.d(TAG, "[DECRYPT_FLOW] Routing to Maximum Crypto engine decryptor block.")
+                                maxEngine.decryptAndConsume(decodedBytes, passwordChars.copyOf()) { decryptedChars ->
+                                    decryptedText = String(decryptedChars)
+                                    isMaxSuccessful = true
                                 }
+                                if (isMaxSuccessful) {
+                                    withContext(Dispatchers.Main) { rbMaximum.isChecked = true }
+                                }
+                            }
 
-                                if (decryptedText == null && !rbMaximum.isChecked && version != 0x07.toByte()) {
-                                    Log.d(TAG, "[DECRYPT_FLOW] Fallback matching triggered for MediumShort engine.")
-                                    decryptedText = mediumShortEngine.decrypt(cipherSource, passwordChars)
-                                    if (decryptedText != null) {
-                                        withContext(Dispatchers.Main) {
-                                            rbMediumShort.isChecked = true
-                                        }
-                                    }
+                            // 3) Last resort for packets whose version byte is unknown.
+                            if (decryptedText == null && !belongsToMediumShort) {
+                                Log.d(TAG, "[DECRYPT_FLOW] Fallback matching triggered for MediumShort engine.")
+                                decryptedText = mediumShortEngine.decrypt(cipherSource, passwordChars.copyOf())
+                                if (decryptedText != null) {
+                                    withContext(Dispatchers.Main) { rbMediumShort.isChecked = true }
                                 }
                             }
                         }
@@ -404,6 +451,7 @@ class TextEncryptionActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     if (!isFinishing && !isDestroyed) {
                         inputPassword.text.clear()
+                        setLoadingState(false)
                     }
                 }
             }
@@ -411,6 +459,7 @@ class TextEncryptionActivity : AppCompatActivity() {
     }
 
     private fun saveTextToEncTxtFile(textPayload: String) {
+        setLoadingState(true)
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val txtFile = generateEncTxtFileStructure(textPayload, isTemporary = false)
@@ -438,11 +487,18 @@ class TextEncryptionActivity : AppCompatActivity() {
                         Toast.LENGTH_LONG
                     ).show()
                 }
+            } finally {
+                withContext(Dispatchers.Main) {
+                    if (!isFinishing && !isDestroyed) {
+                        setLoadingState(false)
+                    }
+                }
             }
         }
     }
 
     private fun shareTextAsEncTxt(textPayload: String) {
+        setLoadingState(true)
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val tempFile = generateEncTxtFileStructure(textPayload, isTemporary = true)
@@ -478,6 +534,12 @@ class TextEncryptionActivity : AppCompatActivity() {
                         "Sharing failed: ${e.message}",
                         Toast.LENGTH_SHORT
                     ).show()
+                }
+            } finally {
+                withContext(Dispatchers.Main) {
+                    if (!isFinishing && !isDestroyed) {
+                        setLoadingState(false)
+                    }
                 }
             }
         }

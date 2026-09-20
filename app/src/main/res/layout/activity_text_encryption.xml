@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#071019"
-    android:orientation="vertical"
     android:fitsSystemWindows="true">
 
     <LinearLayout
@@ -24,7 +23,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="10dp">
 
             <RadioButton
                 android:id="@+id/rb_medium_short"
@@ -49,48 +48,171 @@
                 android:textSize="11sp" />
         </RadioGroup>
 
+        <!-- Text Box Card containing EditText + Divider + 4 Buttons -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:layout_marginTop="4dp"
-            app:cardBackgroundColor="#0F2537"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="10dp"
+            app:cardBackgroundColor="#0A192F"
             app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
             app:strokeColor="#C9A85F"
             app:strokeWidth="1.2dp">
 
-            <EditText
-                android:id="@+id/main_text_box"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:background="@null"
-                android:fontFamily="monospace"
-                android:gravity="top|start"
-                android:hint="Enter your highly classified text here..."
-                android:inputType="textMultiLine"
-                android:padding="16dp"
-                android:textColor="#FFFFFF"
-                android:textColorHint="#557799"
-                android:textSize="15sp" />
+                android:orientation="vertical">
+
+                <EditText
+                    android:id="@+id/main_text_box"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:background="@null"
+                    android:fontFamily="monospace"
+                    android:gravity="top|start"
+                    android:hint="Enter your text or encrypted text here..."
+                    android:inputType="textMultiLine"
+                    android:padding="16dp"
+                    android:textColor="#FFFFFF"
+                    android:textColorHint="#557799"
+                    android:textSize="15sp" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#33C9A85F" />
+
+                <!-- Bottom Toolbar inside Text Box Card -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/btn_import"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        app:cardBackgroundColor="#B45309"
+                        app:cardCornerRadius="8dp"
+                        app:strokeColor="#C9A85F"
+                        app:strokeWidth="1dp">
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:gravity="center"
+                            android:orientation="horizontal"
+                            android:paddingStart="8dp"
+                            android:paddingEnd="8dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="📁"
+                                android:textSize="12sp"
+                                android:layout_marginEnd="4dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="monospace"
+                                android:text="IMPORT"
+                                android:textColor="#FFFFFF"
+                                android:textSize="10sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                    <Button
+                        android:id="@+id/btn_clear"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:layout_marginEnd="4dp"
+                        android:backgroundTint="#37474F"
+                        android:fontFamily="monospace"
+                        android:text="CLEAR"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10sp"
+                        android:minWidth="0dp"
+                        android:minHeight="0dp"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        app:cornerRadius="6dp" />
+
+                    <Button
+                        android:id="@+id/btn_paste"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:layout_marginEnd="4dp"
+                        android:backgroundTint="#1E3A8A"
+                        android:fontFamily="monospace"
+                        android:text="PASTE"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10sp"
+                        android:minWidth="0dp"
+                        android:minHeight="0dp"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        app:cornerRadius="6dp" />
+
+                    <Button
+                        android:id="@+id/btn_copy"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:backgroundTint="#0F766E"
+                        android:fontFamily="monospace"
+                        android:text="COPY"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10sp"
+                        android:minWidth="0dp"
+                        android:minHeight="0dp"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        app:cornerRadius="6dp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="16dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp"
+            android:gravity="center_vertical">
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/btn_share"
-                android:layout_width="85dp"
-                android:layout_height="36dp"
+                android:layout_width="125dp"
+                android:layout_height="38dp"
                 android:clickable="true"
                 android:focusable="true"
-                app:cardBackgroundColor="#0088FF"
-                app:cardCornerRadius="18dp"
+                app:cardBackgroundColor="#1D4ED8"
+                app:cardCornerRadius="10dp"
                 app:strokeColor="#C9A85F"
                 app:strokeWidth="1dp">
 
@@ -104,9 +226,9 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="📤"
+                        android:text="🔗"
                         android:textSize="13sp"
-                        android:layout_marginEnd="4dp" />
+                        android:layout_marginEnd="6dp" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -124,69 +246,39 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />
 
-            <Button
-                android:id="@+id/btn_clear"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:layout_marginEnd="6dp"
-                android:backgroundTint="#FFFFFF"
-                android:fontFamily="monospace"
-                android:text="CLEAR"
-                android:textColor="#071019"
-                android:textSize="11sp"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                app:cornerRadius="8dp" />
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btn_save"
+                android:layout_width="135dp"
+                android:layout_height="38dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardBackgroundColor="#1E293B"
+                app:cardCornerRadius="10dp"
+                app:strokeColor="#C9A85F"
+                app:strokeWidth="1dp">
 
-            <Button
-                android:id="@+id/btn_paste"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:layout_marginEnd="6dp"
-                android:backgroundTint="#FFC107"
-                android:fontFamily="monospace"
-                android:text="PASTE"
-                android:textColor="#071019"
-                android:textSize="11sp"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                app:cornerRadius="8dp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:fontFamily="monospace"
+                    android:text="SAVE PDF"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </com.google.android.material.card.MaterialCardView>
 
-            <Button
-                android:id="@+id/btn_copy"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:backgroundTint="#D32F2F"
-                android:fontFamily="monospace"
-                android:text="COPY"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                app:cornerRadius="8dp" />
         </LinearLayout>
 
+        <!-- Password Field -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/til_password"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="8dp"
-            android:layout_marginStart="4dp"
-            android:layout_marginEnd="4dp"
+            android:layout_marginBottom="14dp"
+            android:layout_marginStart="2dp"
+            android:layout_marginEnd="2dp"
             android:hint="PASSWORD"
             android:textColorHint="#C9A85F"
             app:boxBackgroundMode="outline"
@@ -206,49 +298,7 @@
                 android:textSize="15sp" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/btn_import"
-            android:layout_width="140dp"
-            android:layout_height="40dp"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="4dp"
-            android:layout_marginBottom="8dp"
-            android:clickable="true"
-            android:focusable="true"
-            app:cardBackgroundColor="#E65100"
-            app:cardCornerRadius="8dp"
-            app:strokeColor="#C9A85F"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:gravity="center"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="📥"
-                    android:textSize="14sp"
-                    android:layout_marginEnd="6dp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="monospace"
-                    android:text="IMPORT FILE"
-                    android:textColor="#FFFFFF"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <Space
-            android:layout_width="match_parent"
-            android:layout_height="24dp" />
-
+        <!-- Encrypt & Decrypt Buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -257,13 +307,13 @@
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/btn_encrypt"
                 android:layout_width="0dp"
-                android:layout_height="56dp"
-                android:layout_marginEnd="8dp"
+                android:layout_height="52dp"
+                android:layout_marginEnd="6dp"
                 android:layout_weight="1"
                 android:clickable="true"
                 android:focusable="true"
                 app:cardBackgroundColor="#0A361B"
-                app:cardCornerRadius="16dp"
+                app:cardCornerRadius="14dp"
                 app:strokeColor="#C9A85F"
                 app:strokeWidth="1.2dp">
 
@@ -278,8 +328,8 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="🔒"
-                        android:textSize="22sp"
-                        android:layout_marginEnd="8dp" />
+                        android:textSize="18sp"
+                        android:layout_marginEnd="6dp" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -287,7 +337,7 @@
                         android:fontFamily="monospace"
                         android:text="ENCRYPT"
                         android:textColor="#E6C97A"
-                        android:textSize="16sp"
+                        android:textSize="14sp"
                         android:textStyle="bold" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -295,13 +345,13 @@
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/btn_decrypt"
                 android:layout_width="0dp"
-                android:layout_height="56dp"
-                android:layout_marginStart="8dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="6dp"
                 android:layout_weight="1"
                 android:clickable="true"
                 android:focusable="true"
                 app:cardBackgroundColor="#4A1212"
-                app:cardCornerRadius="16dp"
+                app:cardCornerRadius="14dp"
                 app:strokeColor="#C9A85F"
                 app:strokeWidth="1.2dp">
 
@@ -316,8 +366,8 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="🔑"
-                        android:textSize="22sp"
-                        android:layout_marginEnd="8dp" />
+                        android:textSize="18sp"
+                        android:layout_marginEnd="6dp" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -325,35 +375,20 @@
                         android:fontFamily="monospace"
                         android:text="DECRYPT"
                         android:textColor="#E6C97A"
-                        android:textSize="16sp"
+                        android:textSize="14sp"
                         android:textStyle="bold" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/btn_save"
-            android:layout_width="120dp"
-            android:layout_height="40dp"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="16dp"
-            android:clickable="true"
-            android:focusable="true"
-            app:cardBackgroundColor="#212529"
-            app:cardCornerRadius="8dp"
-            app:strokeColor="#C9A85F"
-            app:strokeWidth="1dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:fontFamily="monospace"
-                android:text="SAVE PDF"
-                android:textColor="#FFFFFF"
-                android:textSize="14sp"
-                android:textStyle="bold" />
-        </com.google.android.material.card.MaterialCardView>
-
     </LinearLayout>
-</LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/loading_progress_bar"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_gravity="center"
+        android:indeterminateTint="#C9A85F"
+        android:visibility="gone" />
+
+</FrameLayout>

@@ -44,7 +44,7 @@ android {
             )
         }
         debug {
-            isMinifyEnabled = false // اصلاح شد تا سرعت بیلد در حالت دیباگ بالا بماند
+            isMinifyEnabled = false
             isDebuggable = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -86,6 +86,8 @@ dependencies {
     kapt("androidx.room:room-compiler:$roomVersion")
 
     implementation("org.apache.commons:commons-imaging:1.0.0-alpha5")
+
+    implementation("androidx.core:core-splashscreen:1.0.1")
 
     implementation("org.bouncycastle:bcprov-jdk18on:$bouncyCastleVersion")
     implementation("de.mkammerer:argon2-jvm:$argon2Version")

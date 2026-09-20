@@ -41,7 +41,7 @@ class MaximumEncryptionResultActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 cleanupTempFile()
-                val intent = Intent().setClassName(this@MaximumEncryptionResultActivity, "com.example.lock.max_text_encrypt.MaximumTextEncryptionActivity").apply {
+                val intent = Intent().setClassName(this@MaximumEncryptionResultActivity, "com.example.lock.text_encrypt.MaximumTextEncryptionActivity").apply {
                     addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 }
                 startActivity(intent)
