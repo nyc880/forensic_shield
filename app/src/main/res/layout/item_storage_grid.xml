@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.example.lock.file_manager.SquareFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/item_cell"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0F1620">
+
+    <ImageView
+        android:id="@+id/item_preview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop"
+        android:visibility="gone" />
+
+    <View
+        android:id="@+id/item_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#2E2C7F58"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/item_icon"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_gravity="center"
+        android:contentDescription="@null" />
+
+    <TextView
+        android:id="@+id/item_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="#A60B1118"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="2"
+        android:paddingLeft="4dp"
+        android:paddingTop="4dp"
+        android:paddingRight="4dp"
+        android:paddingBottom="4dp"
+        android:textColor="#F4F8FC"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <CheckBox
+        android:id="@+id/item_checkbox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|top"
+        android:layout_margin="4dp"
+        android:minWidth="0dp"
+        android:minHeight="0dp"
+        android:padding="2dp" />
+</com.example.lock.file_manager.SquareFrameLayout>

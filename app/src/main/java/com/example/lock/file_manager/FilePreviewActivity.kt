@@ -1,46 +1,21 @@
-/*
-| Variable Name             | Type           | Description                                                        |
-|---------------------------|----------------|--------------------------------------------------------------------|
-| previewTitle              | TextView       | Shows the name of the file being previewed                         |
-| previewDetails            | TextView       | Shows type badge and file size information                         |
-| imagePreview              | ImageView      | View container for rendering decrypted images                      |
-| videoContainer            | View           | Root layout container for video playing interface                  |
-| videoFrame                | FrameLayout    | Frame layout wrapping the video texture view                       |
-| videoTexture              | TextureView    | Texture surface used by MediaPlayer to render video frames         |
-| videoStatus               | TextView       | Status line showing video playback progress                        |
-| videoPlayPause            | Button         | Play/Pause control button for video playback                       |
-| videoSeekBar              | SeekBar        | Track bar showing and controlling video playback position          |
-| audioContainer            | View           | Root layout container for audio playing interface                  |
-| audioTitle                | TextView       | Text field displaying the current audio file name                  |
-| audioStatus               | TextView       | Status line showing audio playback progress                        |
-| audioSeekBar              | SeekBar        | Track bar showing and controlling audio playback position          |
-| audioPlayPause            | Button         | Play/Pause control button for audio playback                       |
-| textPreview               | TextView       | Scrollable text viewer for plaintext files                         |
-| pdfImagePreview           | ImageView      | View displaying rendered first page of a PDF document              |
-| genericIcon               | ImageView      | Fallback icon shown when a file cannot be previewed within the app |
-| genericMessage            | TextView       | Informative message explaining preview limitations                 |
-| openExternalButton        | Button         | Allows opening the decrypted file using external system apps       |
-| selectCheckBox            | CheckBox       | Checkbox to toggle file selection state                            |
-| btnDone                   | Button         | Handles confirmation, strip operations, or safe exit flows         |
-*/
-
-package com.example.lock
+package com.example.lock.file_manager
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.graphics.SurfaceTexture
 import android.graphics.pdf.PdfRenderer
 import android.media.AudioManager
 import android.media.MediaPlayer
-import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.text.format.Formatter
 import android.text.method.ScrollingMovementMethod
+import android.view.Gravity
 import android.view.Surface
 import android.view.TextureView
 import android.view.View
@@ -55,8 +30,15 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import androidx.lifecycle.lifecycleScope
+import com.example.lock.MetadataConfirmActivity
+import com.example.lock.R
+import com.example.lock.SafeExit
 import java.io.File
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class FilePreviewActivity : AppCompatActivity() {
 
@@ -144,8 +126,8 @@ class FilePreviewActivity : AppCompatActivity() {
             selectCheckBox.visibility = View.GONE
 
             btnDone.text = "SAFE EXIT"
-            btnDone.setBackgroundColor(android.graphics.Color.parseColor("#E53935"))
-            btnDone.setTextColor(android.graphics.Color.WHITE)
+            btnDone.setBackgroundColor(Color.parseColor("#E53935"))
+            btnDone.setTextColor(Color.WHITE)
 
             onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
@@ -183,8 +165,8 @@ class FilePreviewActivity : AppCompatActivity() {
 
         if (operationalMode == "METADATA") {
             btnDone.text = "PROCEED TO STRIP"
-            btnDone.setBackgroundColor(android.graphics.Color.parseColor("#54F0A3"))
-            btnDone.setTextColor(android.graphics.Color.parseColor("#06120C"))
+            btnDone.setBackgroundColor(Color.parseColor("#54F0A3"))
+            btnDone.setTextColor(Color.parseColor("#06120C"))
         }
 
         uiHandler.post(progressUpdater)
@@ -229,8 +211,13 @@ class FilePreviewActivity : AppCompatActivity() {
 
     private fun showImage() {
         imagePreview.visibility = View.VISIBLE
-        val bitmap = decodeSampledBitmap(file, 1600, 1600)
-        imagePreview.setImageBitmap(bitmap)
+        imagePreview.setImageBitmap(null)
+        lifecycleScope.launch {
+            val bitmap = withContext(Dispatchers.IO) {
+                decodeSampledBitmap(file, 1600, 1600)
+            }
+            imagePreview.setImageBitmap(bitmap)
+        }
     }
 
     private fun showVideo() {
@@ -335,7 +322,7 @@ class FilePreviewActivity : AppCompatActivity() {
             }
 
             if (layoutParams is FrameLayout.LayoutParams) {
-                layoutParams.gravity = android.view.Gravity.CENTER
+                layoutParams.gravity = Gravity.CENTER
             }
 
             videoTexture.layoutParams = layoutParams
@@ -418,30 +405,29 @@ class FilePreviewActivity : AppCompatActivity() {
     private fun showText() {
         textPreview.visibility = View.VISIBLE
         textPreview.movementMethod = ScrollingMovementMethod()
-        try {
-            textPreview.text = file.readText()
-        } catch (_: Exception) {
-            textPreview.text = "Unable to read this text file."
+        textPreview.text = "Loading..."
+        lifecycleScope.launch {
+            val content = withContext(Dispatchers.IO) {
+                readTextCapped(file, 256000)
+            }
+            textPreview.text = content
+            textPreview.scrollTo(0, 0)
         }
     }
 
     private fun showPdf() {
         pdfImagePreview.visibility = View.VISIBLE
         openExternalButton.visibility = View.VISIBLE
-        try {
-            val fd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-            val renderer = PdfRenderer(fd)
-            if (renderer.pageCount > 0) {
-                val page = renderer.openPage(0)
-                val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
-                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                pdfImagePreview.setImageBitmap(bitmap)
-                page.close()
+        pdfImagePreview.setImageBitmap(null)
+        lifecycleScope.launch {
+            val bitmap = withContext(Dispatchers.IO) {
+                renderFirstPdfPage(file)
             }
-            renderer.close()
-            fd.close()
-        } catch (_: Exception) {
-            openWithExternalApp()
+            if (bitmap != null) {
+                pdfImagePreview.setImageBitmap(bitmap)
+            } else {
+                openWithExternalApp()
+            }
         }
     }
 
@@ -498,6 +484,47 @@ class FilePreviewActivity : AppCompatActivity() {
         val minutes = totalSeconds / 60
         val seconds = totalSeconds % 60
         return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+    }
+
+    private fun readTextCapped(file: File, maxChars: Int): String {
+        return try {
+            val reader = file.bufferedReader()
+            reader.use { input ->
+                val sb = StringBuilder()
+                val buffer = CharArray(8192)
+                var remaining = maxChars
+                var truncated = false
+                while (remaining > 0) {
+                    val read = input.read(buffer, 0, minOf(buffer.size, remaining))
+                    if (read < 0) break
+                    sb.append(buffer, 0, read)
+                    remaining -= read
+                    if (read == 0) break
+                }
+                if (remaining == 0 && input.read() != -1) truncated = true
+                if (truncated) sb.append("\n\n[Preview truncated]")
+                sb.toString()
+            }
+        } catch (_: Exception) {
+            "Unable to read this text file."
+        }
+    }
+
+    private fun renderFirstPdfPage(file: File): Bitmap? {
+        return try {
+            ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
+                PdfRenderer(fd).use { renderer ->
+                    if (renderer.pageCount <= 0) return@use null
+                    renderer.openPage(0).use { page ->
+                        val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
+                        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                        bitmap
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun decodeSampledBitmap(file: File, reqWidth: Int, reqHeight: Int): Bitmap? {

@@ -19,75 +19,9 @@
         android:background="#0B1118">
 
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/screen_title"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="File Browser"
-                    android:textColor="#F5FAFF"
-                    android:textSize="22sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/screen_subtitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
-                    android:text="Browse, search and manage files securely"
-                    android:textColor="#7F92A6"
-                    android:textSize="12sp" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/selected_counter"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="#123322"
-                android:paddingStart="12dp"
-                android:paddingTop="7dp"
-                android:paddingEnd="12dp"
-                android:paddingBottom="7dp"
-                android:text="0 Selected"
-                android:textColor="#7BFFC2"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_system_picker"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="12dp"
-            android:text="SYSTEM FILE MANAGER"
-            android:textAllCaps="false"
-            android:textColor="#FFFFFF"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            app:backgroundTint="#7A1C2E"
-            app:cornerRadius="22dp"
-            app:icon="@android:drawable/ic_menu_manage"
-            app:iconGravity="textStart"
-            app:iconPadding="10dp"
-            app:iconTint="#FFFFFF"
-            app:strokeColor="#A8324A"
-            app:strokeWidth="1dp" />
-
-        <LinearLayout
             android:id="@+id/search_shell"
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:layout_marginTop="10dp"
             android:background="#111A24"
             android:gravity="center_vertical"
             android:orientation="horizontal"
@@ -95,8 +29,8 @@
             android:paddingEnd="14dp">
 
             <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
                 android:src="@android:drawable/ic_menu_search"
                 app:tint="#79A6D2" />
 
@@ -124,6 +58,35 @@
                 app:tint="#79A6D2" />
         </LinearLayout>
 
+        <ProgressBar
+            android:id="@+id/search_progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:layout_marginTop="8dp"
+            android:indeterminate="true"
+            android:indeterminateTint="#54F0A3"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_system_picker"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="10dp"
+            android:text="SYSTEM FILE MANAGER"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            app:backgroundTint="#7A1C2E"
+            app:cornerRadius="22dp"
+            app:icon="@android:drawable/ic_menu_manage"
+            app:iconGravity="textStart"
+            app:iconPadding="10dp"
+            app:iconTint="#FFFFFF"
+            app:strokeColor="#A8324A"
+            app:strokeWidth="1dp" />
+
         <TextView
             android:id="@+id/current_path"
             android:layout_width="match_parent"
@@ -144,51 +107,93 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_sort_menu"
-                android:layout_width="0dp"
-                android:layout_height="38dp"
-                android:layout_weight="1"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:minWidth="84dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
                 android:text="Sort: Date"
                 android:textAllCaps="false"
                 android:textColor="#DDF4FF"
-                android:textSize="11sp"
+                android:textSize="10sp"
                 android:textStyle="bold"
                 app:backgroundTint="#1C3850"
-                app:cornerRadius="19dp"
+                app:cornerRadius="16dp"
                 app:icon="@android:drawable/arrow_down_float"
                 app:iconGravity="textEnd"
-                app:iconPadding="8dp"
+                app:iconPadding="2dp"
                 app:iconTint="#DDF4FF"
                 app:strokeWidth="0dp" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_view_mode"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginStart="6dp"
+                android:minWidth="58dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:text="Grid"
+                android:textAllCaps="false"
+                android:textColor="#DDF4FF"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                app:backgroundTint="#1C3850"
+                app:cornerRadius="16dp"
+                app:icon="@android:drawable/ic_menu_gallery"
+                app:iconGravity="textStart"
+                app:iconPadding="2dp"
+                app:iconTint="#DDF4FF"
+                app:strokeWidth="0dp" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/selected_counter"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginEnd="6dp"
+                android:background="#123322"
+                android:gravity="center"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:text="0 Selected"
+                android:textColor="#7BFFC2"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_select_all"
                 android:layout_width="wrap_content"
-                android:layout_height="38dp"
-                android:layout_marginStart="8dp"
+                android:layout_height="32dp"
+                android:minWidth="86dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
                 android:text="Select all"
                 android:textAllCaps="false"
                 android:textColor="#E7F3FF"
-                android:textSize="11sp"
+                android:textSize="10sp"
                 android:textStyle="bold"
                 app:backgroundTint="#244763"
-                app:cornerRadius="19dp"
+                app:cornerRadius="16dp"
                 app:strokeColor="#356384"
                 app:strokeWidth="1dp" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_clear_selection"
-                android:layout_width="wrap_content"
-                android:layout_height="38dp"
-                android:layout_marginStart="8dp"
-                android:text="Clear"
-                android:textAllCaps="false"
-                android:textColor="#E7F3FF"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                app:backgroundTint="#244763"
-                app:cornerRadius="19dp"
-                app:strokeColor="#356384"
-                app:strokeWidth="1dp" />
         </LinearLayout>
     </LinearLayout>
 
@@ -197,15 +202,22 @@
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/file_list"
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipe_refresh"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:paddingStart="12dp"
-            android:paddingTop="8dp"
-            android:paddingEnd="12dp"
-            android:paddingBottom="120dp" />
+            android:layout_height="match_parent">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/file_list"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingStart="12dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="120dp" />
+
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
         <LinearLayout
             android:id="@+id/empty_state"

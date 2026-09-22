@@ -4,9 +4,16 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
+        android:name=".MyApplication"
         android:allowBackup="false"
+        android:fullBackupContent="false"
         android:hasFragileUserData="false"
         android:largeHeap="true"
         android:icon="@mipmap/ic_launcher"
@@ -15,6 +22,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.LOCK"
         tools:replace="android:allowBackup">
+
+        <service
+            android:name=".CryptoForegroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <activity
             android:name="com.example.lock.SplashActivity"
@@ -45,16 +58,6 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data android:scheme="content" />
-                <data android:mimeType="text/plain" />
-                <data android:mimeType="text/*" />
-                <data android:mimeType="application/octet-stream" />
-            </intent-filter>
-
-            <intent-filter android:label="Decrypt with Titan">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
                 <data android:scheme="file" />
                 <data android:mimeType="text/plain" />
                 <data android:mimeType="text/*" />
@@ -65,25 +68,8 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+
                 <data android:scheme="content" />
-                <data android:host="*" />
-
-                <data android:mimeType="*/*" />
-                <data android:mimeType="text/*" />
-                <data android:mimeType="text/plain" />
-                <data android:mimeType="application/octet-stream" />
-
-                <data android:pathPattern=".*\\.enc\\.txt" />
-                <data android:pathPattern=".*\\.enc\\.txt.*" />
-                <data android:pathPattern=".*\\.enc" />
-                <data android:pathSuffix=".enc.txt" />
-                <data android:pathSuffix=".enc" />
-            </intent-filter>
-
-            <intent-filter android:label="Decrypt with Titan">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="file" />
                 <data android:host="*" />
 
@@ -139,12 +125,12 @@
             android:screenOrientation="portrait" />
 
         <activity
-            android:name="com.example.lock.FileBrowserActivity"
+            android:name="com.example.lock.file_manager.FileBrowserActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 
         <activity
-            android:name="com.example.lock.FilePreviewActivity"
+            android:name="com.example.lock.file_manager.FilePreviewActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 

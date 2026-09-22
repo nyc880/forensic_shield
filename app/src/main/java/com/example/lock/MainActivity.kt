@@ -17,6 +17,7 @@ import android.os.Bundle
 import android.provider.OpenableColumns
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import com.example.lock.file_manager.FileBrowserActivity
 import com.example.lock.text_encrypt.TextEncryptionActivity
 import com.google.android.material.card.MaterialCardView
 import java.io.File

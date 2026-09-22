@@ -14,6 +14,7 @@ import com.example.lock.crypto.EncryptionManager
 import com.example.lock.crypto.EngineType
 import com.example.lock.crypto.LightEncryptionManager
 import com.example.lock.crypto.Lock
+import com.example.lock.file_manager.FilePreviewActivity
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers

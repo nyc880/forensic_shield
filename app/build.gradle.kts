@@ -93,6 +93,8 @@ dependencies {
     implementation("de.mkammerer:argon2-jvm:$argon2Version")
     implementation("androidx.security:security-crypto:$securityCryptoVersion")
 
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
