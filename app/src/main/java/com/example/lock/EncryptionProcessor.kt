@@ -8,6 +8,8 @@ import com.example.lock.crypto.EncryptionManager
 import com.example.lock.crypto.EngineType
 import com.example.lock.crypto.LightEncryptionManager
 import com.example.lock.crypto.Lock
+import com.example.lock.safe_delete.PurgeOptions
+import com.example.lock.safe_delete.SecureDelete
 import java.io.File
 import java.io.IOException
 import java.io.RandomAccessFile
@@ -125,18 +127,18 @@ class EncryptionProcessor(private val context: Context) {
                 val finalWithZipExt = File(targetDir, finalZipEnc.nameWithoutExtension + ".zip.enc")
                 if (!finalZipEnc.renameTo(finalWithZipExt)) {
                     finalZipEnc.copyTo(finalWithZipExt, overwrite = true)
-                    finalZipEnc.delete()
+                    secureDelete(finalZipEnc)
                 }
 
                 Log.d(LOG_TAG, "ZIP.ENC created: ${finalWithZipExt.absolutePath} size=${finalWithZipExt.length()}")
                 onProgress?.invoke(100, "ZIP.ENC created: ${finalWithZipExt.name}")
 
                 if (deleteAfterEncryption) {
-                    for (f in validFiles) secureDelete(f)
+                    secureDeleteAll(validFiles)
                 }
             } finally {
-                for (tmp in tempEncryptedFiles) secureDelete(tmp)
-                tempZip?.let { secureDelete(it) }
+                for (tmp in tempEncryptedFiles) secureDeleteTemp(tmp)
+                tempZip?.let { secureDeleteTemp(it) }
             }
         }
     }
@@ -210,14 +212,14 @@ class EncryptionProcessor(private val context: Context) {
             }
             return secondLayerFile
         } finally {
-            firstLayerFile?.let { if (it.exists()) secureDelete(it) }
+            firstLayerFile?.let { if (it.exists()) secureDeleteTemp(it) }
             java.util.Arrays.fill(firstPassBytes, 0)
             java.util.Arrays.fill(secondPassBytes, 0)
         }
     }
 
     private fun createZip(files: List<File>, zipFile: File) {
-        if (zipFile.exists()) secureDelete(zipFile)
+        if (zipFile.exists()) secureDeleteTemp(zipFile)
         ZipOutputStream(zipFile.outputStream().buffered(BUFFER_SIZE)).use { zipOut ->
             val buffer = ByteArray(BUFFER_SIZE)
             for (file in files) {
@@ -238,7 +240,39 @@ class EncryptionProcessor(private val context: Context) {
     }
 
     private fun secureDelete(file: File) {
+        secureDeleteAll(listOf(file))
+    }
+
+    private fun secureDeleteAll(files: List<File>) {
+        val existing = files.filter { it.exists() }
+        if (existing.isEmpty()) return
+        try {
+            val report = SecureDelete.purgeFiles(context, existing, PurgeOptions.MILITARY)
+            Log.d(LOG_TAG, "secure purge: destroyed=${report.successCount}/${existing.size} bytes=${report.totalBytesShredded}")
+            for (file in existing) {
+                if (file.exists()) legacySecureDelete(file)
+            }
+        } catch (t: Throwable) {
+            Log.w(LOG_TAG, "secure purge failed: ${t.javaClass.simpleName}; using fallback")
+            for (file in existing) legacySecureDelete(file)
+        }
+    }
+
+    private fun secureDeleteTemp(file: File) {
         if (!file.exists()) return
+        try {
+            SecureDelete.purgeFiles(
+                context,
+                listOf(file),
+                PurgeOptions.MILITARY.copy(purgeThumbnails = false, scanTrashPaths = false)
+            )
+            if (file.exists()) legacySecureDelete(file)
+        } catch (t: Throwable) {
+            legacySecureDelete(file)
+        }
+    }
+
+    private fun legacySecureDelete(file: File) {
         try {
             if (file.isFile) {
                 val len = file.length()

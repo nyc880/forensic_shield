@@ -1,178 +1,403 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+
     package="com.example.lock"
+
     xmlns:tools="http://schemas.android.com/tools">
 
+
+
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
+
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" tools:ignore="ScopedStorage" />
+
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+
+
     <application
+
         android:name=".MyApplication"
+
         android:allowBackup="false"
+
         android:fullBackupContent="false"
+
         android:hasFragileUserData="false"
+
         android:largeHeap="true"
+
         android:icon="@mipmap/ic_launcher"
+
         android:label="@string/app_name"
+
         android:roundIcon="@mipmap/ic_launcher_round"
+
         android:supportsRtl="true"
+
         android:theme="@style/Theme.LOCK"
+
         tools:replace="android:allowBackup">
 
+
+
         <service
+
             android:name=".CryptoForegroundService"
+
             android:enabled="true"
+
             android:exported="false"
+
             android:foregroundServiceType="dataSync" />
 
+
+
+        <service
+
+            android:name="com.example.lock.safe_delete.DeepCleanService"
+
+            android:enabled="true"
+
+            android:exported="false"
+
+            android:foregroundServiceType="dataSync" />
+
+
+
+        <service
+
+            android:name="com.example.lock.safe_delete.DeepCleanJobService"
+
+            android:enabled="true"
+
+            android:exported="false"
+
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
+
+
         <activity
+
             android:name="com.example.lock.SplashActivity"
+
             android:exported="true"
+
             android:screenOrientation="portrait"
+
             android:theme="@style/Theme.LOCK">
+
             <intent-filter>
+
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
+
             </intent-filter>
+
         </activity>
 
-        <activity
-            android:name="com.example.lock.MainActivity"
-            android:exported="false"
-            android:launchMode="singleTask"
-            android:screenOrientation="portrait" />
+
 
         <activity
+
+            android:name="com.example.lock.MainActivity"
+
+            android:exported="false"
+
+            android:launchMode="singleTask"
+
+            android:screenOrientation="portrait" />
+
+
+
+        <activity
+
             android:name="com.example.lock.DecryptionHandlerActivity"
+
             android:exported="true"
+
             android:screenOrientation="portrait"
+
             android:launchMode="singleTask">
 
+
+
             <intent-filter android:label="Decrypt with Titan">
+
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
+
                 <category android:name="android.intent.category.BROWSABLE" />
 
+
+
                 <data android:scheme="content" />
+
                 <data android:scheme="file" />
+
                 <data android:mimeType="text/plain" />
+
                 <data android:mimeType="text/*" />
+
                 <data android:mimeType="application/octet-stream" />
+
             </intent-filter>
 
+
+
             <intent-filter android:label="Decrypt with Titan">
+
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
+
                 <category android:name="android.intent.category.BROWSABLE" />
 
+
+
                 <data android:scheme="content" />
+
                 <data android:scheme="file" />
+
                 <data android:host="*" />
 
+
+
                 <data android:mimeType="*/*" />
+
                 <data android:mimeType="text/*" />
+
                 <data android:mimeType="text/plain" />
+
                 <data android:mimeType="application/octet-stream" />
 
+
+
                 <data android:pathPattern=".*\\.enc\\.txt" />
+
                 <data android:pathPattern=".*\\.enc\\.txt.*" />
+
                 <data android:pathPattern=".*\\.enc" />
+
                 <data android:pathSuffix=".enc.txt" />
+
                 <data android:pathSuffix=".enc" />
+
             </intent-filter>
+
+
 
             <intent-filter android:label="Decrypt with Titan">
+
                 <action android:name="android.intent.action.SEND" />
+
                 <category android:name="android.intent.category.DEFAULT" />
+
                 <data android:mimeType="*/*" />
+
                 <data android:mimeType="text/*" />
+
                 <data android:mimeType="text/plain" />
+
             </intent-filter>
+
         </activity>
 
+
+
         <activity
+
             android:name="com.example.lock.text_encrypt.TextEncryptionActivity"
+
             android:exported="false"
+
             android:screenOrientation="portrait" />
 
+
+
         <activity
+
             android:name="com.example.lock.text_encrypt.MaximumTextEncryptionActivity"
+
             android:exported="false"
+
             android:screenOrientation="portrait" />
 
+
+
         <activity
+
             android:name="com.example.lock.text_encrypt.MaximumTextDecryptionActivity"
+
             android:exported="false"
+
             android:screenOrientation="portrait" />
 
+
+
         <activity
+
             android:name="com.example.lock.text_encrypt.MaximumEncryptionProcessingActivity"
+
             android:exported="false"
+
             android:screenOrientation="portrait" />
 
+
+
         <activity
+
             android:name="com.example.lock.text_encrypt.MaximumEncryptionResultActivity"
+
             android:exported="false"
+
             android:screenOrientation="portrait" />
 
+
+
         <activity
+
             android:name="com.example.lock.text_encrypt.MaximumDecryptionResultActivity"
+
             android:exported="false"
+
             android:screenOrientation="portrait" />
 
+
+
         <activity
+
             android:name="com.example.lock.file_manager.FileBrowserActivity"
+
             android:exported="false"
+
             android:screenOrientation="portrait" />
 
+
+
         <activity
+
             android:name="com.example.lock.file_manager.FilePreviewActivity"
+
             android:exported="false"
+
             android:screenOrientation="portrait" />
 
+
+
         <activity
+
             android:name="com.example.lock.EncryptionSettingsActivity"
+
             android:exported="false"
+
             android:screenOrientation="portrait" />
 
+
+
         <activity
+
             android:name="com.example.lock.ProcessingActivity"
+
             android:exported="false"
+
             android:screenOrientation="portrait" />
 
+
+
         <activity
+
             android:name="com.example.lock.DecryptionSettingsActivity"
+
             android:exported="false"
+
             android:screenOrientation="portrait" />
 
+
+
         <activity
+
             android:name="com.example.lock.safe_delete.SafeDeleteConfirmActivity"
+
             android:exported="false"
+
             android:screenOrientation="portrait" />
 
+
+
         <activity
+
             android:name="com.example.lock.safe_delete.SafeDeleteActivity"
+
             android:exported="false"
+
             android:screenOrientation="portrait" />
 
+
+
         <activity
-            android:name="com.example.lock.MetadataConfirmActivity"
+
+            android:name="com.example.lock.safe_delete.DeepCleanActivity"
+
             android:exported="false"
+
             android:screenOrientation="portrait" />
+
+
+
+        <activity
+
+            android:name="com.example.lock.MetadataConfirmActivity"
+
+            android:exported="false"
+
+            android:screenOrientation="portrait" />
+
+
 
         <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="com.example.lock.fileprovider"
+
+            android:name="com.example.lock.safe_delete.SafeDeleteStartupProvider"
+
+            android:authorities="com.example.lock.safe_delete.startup"
+
+            android:enabled="true"
+
             android:exported="false"
+
+            android:initOrder="100" />
+
+
+
+        <provider
+
+            android:name="androidx.core.content.FileProvider"
+
+            android:authorities="com.example.lock.fileprovider"
+
+            android:exported="false"
+
             android:grantUriPermissions="true">
+
             <meta-data
+
                 android:name="android.support.FILE_PROVIDER_PATHS"
+
                 android:resource="@xml/file_paths" />
+
         </provider>
 
+
+
     </application>
+
 </manifest>
