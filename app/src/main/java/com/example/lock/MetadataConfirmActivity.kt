@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.switchmaterial.SwitchMaterial
 import com.example.lock.R
 
 class MetadataConfirmActivity : AppCompatActivity() {
@@ -13,6 +14,7 @@ class MetadataConfirmActivity : AppCompatActivity() {
     private lateinit var titleText: TextView
     private lateinit var warningText: TextView
     private lateinit var filesCountText: TextView
+    private lateinit var safeDeleteSwitch: SwitchMaterial
     private lateinit var btnCancel: MaterialButton
     private lateinit var btnConfirm: MaterialButton
 
@@ -23,20 +25,31 @@ class MetadataConfirmActivity : AppCompatActivity() {
         titleText = findViewById(R.id.title_text)
         warningText = findViewById(R.id.warning_text)
         filesCountText = findViewById(R.id.files_count_text)
+        safeDeleteSwitch = findViewById(R.id.switch_safe_delete)
         btnCancel = findViewById(R.id.btn_cancel)
         btnConfirm = findViewById(R.id.btn_confirm_delete)
 
-        // Read from "SELECTED_FILES" (passed from Browser/Preview)
         val selectedFiles = intent.getStringArrayListExtra("SELECTED_FILES") ?: arrayListOf()
         val count = selectedFiles.size
 
         titleText.text = "METADATA PURGE"
         titleText.setTextColor(Color.parseColor("#C9A85F"))
 
-        warningText.text = "This will reconstruct the selected files to remove all tracking information, GPS traces, and device identifiers."
+        warningText.text = "A cleaned copy will be written to (no-meta) folder."
         filesCountText.text = "Selected files: $count"
 
-        btnConfirm.text = "YES, PURGE METADATA"
+        safeDeleteSwitch.isChecked = false
+        safeDeleteSwitch.isEnabled = true
+        safeDeleteSwitch.text = "Safe delete original files"
+
+        btnConfirm.text = "CREATE CLEAN COPIES"
+        safeDeleteSwitch.setOnCheckedChangeListener { _, checked ->
+            btnConfirm.text = if (checked) {
+                "CREATE AND SECURELY DELETE"
+            } else {
+                "CREATE CLEAN COPIES"
+            }
+        }
         btnConfirm.setBackgroundColor(Color.parseColor("#FF9800"))
         btnConfirm.setTextColor(Color.BLACK)
 
@@ -45,11 +58,11 @@ class MetadataConfirmActivity : AppCompatActivity() {
         }
 
         btnConfirm.setOnClickListener {
-            val intent = Intent(this, ProcessingActivity::class.java)
-            intent.putExtra("MODE", "METADATA_PURGE")
-            // Pass to ProcessingActivity as "FILES"
-            intent.putStringArrayListExtra("FILES", selectedFiles)
-            startActivity(intent)
+            val processingIntent = Intent(this, ProcessingActivity::class.java)
+            processingIntent.putExtra("MODE", "METADATA_PURGE")
+            processingIntent.putStringArrayListExtra("FILES", selectedFiles)
+            processingIntent.putExtra("SAFE_DELETE_ORIGINAL", safeDeleteSwitch.isChecked)
+            startActivity(processingIntent)
             finish()
         }
     }

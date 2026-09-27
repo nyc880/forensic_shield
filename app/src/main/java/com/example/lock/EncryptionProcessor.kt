@@ -4,8 +4,8 @@ import android.content.Context
 import android.os.Build
 import android.os.Environment
 import android.util.Log
-import com.example.lock.crypto.EncryptionManager
 import com.example.lock.crypto.EngineType
+import com.example.lock.crypto.MaxEngineAdapter
 import com.example.lock.crypto.LightEncryptionManager
 import com.example.lock.crypto.Lock
 import com.example.lock.safe_delete.PurgeOptions
@@ -56,34 +56,48 @@ class EncryptionProcessor(private val context: Context) {
             throw IOException("No valid files to encrypt (source path missing)")
         }
 
+        var effectiveSecondEngine = secondEngineType
+        if (isDualPassword && effectiveSecondEngine == engineType) {
+            val values = EngineType.values()
+            val idx = values.indexOf(engineType)
+            effectiveSecondEngine = values[(idx + 1) % values.size]
+            Log.d(LOG_TAG, "Dual engine auto-rotated: $engineType -> $effectiveSecondEngine")
+        }
+
         Log.d(
             LOG_TAG,
-            "execute start count=${validFiles.size} engine=$engineType secondEngine=$secondEngineType mode=$mode dual=$isDualPassword target=${targetDir.absolutePath}"
+            "execute start count=${validFiles.size} engine=$engineType secondEngine=$effectiveSecondEngine mode=$mode dual=$isDualPassword target=${targetDir.absolutePath}"
         )
 
         val isZipMode = mode == MODE_JUST_ZIP
 
+        val totalBytes = validFiles.sumOf { it.length() }.coerceAtLeast(1L)
+        var bytesDoneBefore = 0L
+
         if (!isZipMode) {
-            for ((index, file) in validFiles.withIndex()) {
+            for (file in validFiles) {
                 var outFile: File? = null
+                val fileBytes = file.length()
+                val baseBytes = bytesDoneBefore
+                val toGlobal: (Int) -> Int = { p ->
+                    val processedBytes = (fileBytes * p.toLong()) / 100L
+                    ((baseBytes + processedBytes) * 100L / totalBytes).toInt().coerceIn(0, 100)
+                }
                 try {
                     Log.d(LOG_TAG, "Encrypting ${file.absolutePath} size=${file.length()} engine=$engineType")
                     outFile = if (!isDualPassword) {
                         runSingleEncryption(file, targetDir, password, engineType) { p ->
-                            val base = (index * 100) / validFiles.size
-                            val portion = p / validFiles.size
-                            onProgress?.invoke((base + portion).coerceIn(0, 100), "Encrypting ${file.name}... $p%")
+                            onProgress?.invoke(toGlobal(p), "Encrypting ${file.name}... $p%")
                         }
                     } else {
                         val secondPass = if (secondPassword == null || secondPassword.isEmpty()) password else secondPassword
-                        runDualEncryption(file, targetDir, password, secondPass, engineType, secondEngineType) { p ->
-                            val base = (index * 100) / validFiles.size
-                            val portion = p / validFiles.size
-                            onProgress?.invoke((base + portion).coerceIn(0, 100), "Dual ${file.name}... $p%")
+                        runDualEncryption(file, targetDir, password, secondPass, engineType, effectiveSecondEngine) { p ->
+                            onProgress?.invoke(toGlobal(p), "Dual ${file.name}... $p%")
                         }
                     }
                     Log.d(LOG_TAG, "Encrypted output: ${outFile.absolutePath} size=${outFile.length()}")
-                    onProgress?.invoke(((index + 1) * 100 / validFiles.size).coerceIn(0, 100), "Completed ${file.name}")
+                    bytesDoneBefore += fileBytes
+                    onProgress?.invoke(toGlobal(100), "Completed ${file.name}")
                     if (deleteAfterEncryption) secureDelete(file)
                 } catch (e: Exception) {
                     outFile?.let { if (it.exists()) secureDelete(it) }
@@ -94,20 +108,25 @@ class EncryptionProcessor(private val context: Context) {
             val tempEncryptedFiles = ArrayList<File>()
             var tempZip: File? = null
             try {
-                for ((index, file) in validFiles.withIndex()) {
+                for (file in validFiles) {
                     Log.d(LOG_TAG, "ZIP-mode encrypting ${file.absolutePath} size=${file.length()} engine=$engineType")
+                    val fileBytes = file.length()
+                    val baseBytes = bytesDoneBefore
+                    val toPhase: (Int) -> Int = { p ->
+                        val processedBytes = (fileBytes * p.toLong()) / 100L
+                        ((baseBytes + processedBytes) * 30L / totalBytes).toInt().coerceIn(0, 30)
+                    }
                     val encFile = if (!isDualPassword) {
                         runSingleEncryption(file, context.cacheDir, password, engineType) { p ->
-                            val phase = (index * 30) / validFiles.size + (p / (3 * validFiles.size))
-                            onProgress?.invoke(phase.coerceIn(0, 100), "Encrypting ${file.name}... $p%")
+                            onProgress?.invoke(toPhase(p), "Encrypting ${file.name}... $p%")
                         }
                     } else {
                         val secondPass = if (secondPassword == null || secondPassword.isEmpty()) password else secondPassword
-                        runDualEncryption(file, context.cacheDir, password, secondPass, engineType, secondEngineType) { p ->
-                            val phase = (index * 30) / validFiles.size + (p / (3 * validFiles.size))
-                            onProgress?.invoke(phase.coerceIn(0, 100), "Dual ${file.name}... $p%")
+                        runDualEncryption(file, context.cacheDir, password, secondPass, engineType, effectiveSecondEngine) { p ->
+                            onProgress?.invoke(toPhase(p), "Dual ${file.name}... $p%")
                         }
                     }
+                    bytesDoneBefore += fileBytes
                     tempEncryptedFiles.add(encFile)
                 }
 
@@ -120,8 +139,15 @@ class EncryptionProcessor(private val context: Context) {
                 createZip(tempEncryptedFiles, tempZip)
 
                 onProgress?.invoke(70, "Encrypting ZIP to .zip.enc...")
-                val finalZipEnc = runSingleEncryption(tempZip, targetDir, password, engineType) { p ->
-                    onProgress?.invoke(70 + (p * 30 / 100), "Encrypting ZIP... $p%")
+                val finalZipEnc = if (!isDualPassword) {
+                    runSingleEncryption(tempZip, targetDir, password, engineType) { p ->
+                        onProgress?.invoke(70 + (p * 30 / 100), "Encrypting ZIP... $p%")
+                    }
+                } else {
+                    val secondPass = if (secondPassword == null || secondPassword.isEmpty()) password else secondPassword
+                    runDualEncryption(tempZip, targetDir, password, secondPass, engineType, effectiveSecondEngine) { p ->
+                        onProgress?.invoke(70 + (p * 30 / 100), "Encrypting ZIP... $p%")
+                    }
                 }
 
                 val finalWithZipExt = File(targetDir, finalZipEnc.nameWithoutExtension + ".zip.enc")
@@ -151,8 +177,27 @@ class EncryptionProcessor(private val context: Context) {
         onProgress: ((Int) -> Unit)? = null
     ): File {
         return when (engineType) {
-            EngineType.MAX -> EncryptionManager().encryptFile(inputFile, outputDir, password.copyOf()) { snap: EncryptionManager.ProgressSnapshot ->
-                onProgress?.invoke(snap.percent)
+            EngineType.MAX -> {
+                val copy = password.copyOf()
+                try {
+                    val total = inputFile.length()
+                    val out = MaxEngineAdapter.getInstance(context).encryptFile(
+                        inputFile = inputFile,
+                        outputDirectory = outputDir,
+                        password = copy,
+                        onProgress = { processed ->
+                            if (total > 0L) {
+                                onProgress?.invoke(
+                                    ((processed * 100L) / total).toInt().coerceIn(0, 100)
+                                )
+                            }
+                        }
+                    )
+                    onProgress?.invoke(100)
+                    out
+                } finally {
+                    java.util.Arrays.fill(copy, '\u0000')
+                }
             }
             EngineType.MEDIUM -> {
                 val passBytes = password.concatToString().toByteArray(Charsets.UTF_8)
@@ -184,8 +229,27 @@ class EncryptionProcessor(private val context: Context) {
         var firstLayerFile: File? = null
         try {
             firstLayerFile = when (engineType) {
-                EngineType.MAX -> EncryptionManager().encryptFile(inputFile, context.cacheDir, firstPassword.copyOf()) { snap: EncryptionManager.ProgressSnapshot ->
-                    onProgress?.invoke(snap.percent / 2)
+                EngineType.MAX -> {
+                    val copy = firstPassword.copyOf()
+                    try {
+                        val total = inputFile.length()
+                        val tmp = MaxEngineAdapter.getInstance(context).encryptFile(
+                            inputFile = inputFile,
+                            outputDirectory = context.cacheDir,
+                            password = copy,
+                            onProgress = { processed ->
+                                if (total > 0L) {
+                                    onProgress?.invoke(
+                                        (((processed * 100L) / total) / 2L).toInt().coerceIn(0, 50)
+                                    )
+                                }
+                            }
+                        )
+                        onProgress?.invoke(50)
+                        tmp
+                    } finally {
+                        java.util.Arrays.fill(copy, '\u0000')
+                    }
                 }
                 EngineType.MEDIUM -> {
                     val tmp = File(context.cacheDir, EngineType.generateFileName(engineType))
@@ -198,8 +262,27 @@ class EncryptionProcessor(private val context: Context) {
             }
 
             val secondLayerFile = when (secondEngineType) {
-                EngineType.MAX -> EncryptionManager().encryptFile(firstLayerFile, outputDir, secondPassword.copyOf()) { snap: EncryptionManager.ProgressSnapshot ->
-                    onProgress?.invoke(50 + snap.percent / 2)
+                EngineType.MAX -> {
+                    val copy = secondPassword.copyOf()
+                    try {
+                        val total = firstLayerFile.length()
+                        val out = MaxEngineAdapter.getInstance(context).encryptFile(
+                            inputFile = firstLayerFile,
+                            outputDirectory = outputDir,
+                            password = copy,
+                            onProgress = { processed ->
+                                if (total > 0L) {
+                                    onProgress?.invoke(
+                                        (50L + ((processed * 100L) / total) / 2L).toInt().coerceIn(0, 100)
+                                    )
+                                }
+                            }
+                        )
+                        onProgress?.invoke(100)
+                        out
+                    } finally {
+                        java.util.Arrays.fill(copy, '\u0000')
+                    }
                 }
                 EngineType.MEDIUM -> {
                     val out = File(outputDir, EngineType.generateFileName(secondEngineType))

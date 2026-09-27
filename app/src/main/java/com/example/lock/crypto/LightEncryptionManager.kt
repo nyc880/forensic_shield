@@ -37,7 +37,7 @@ class LightEncryptionManager {
         private const val KEY_SIZE_BYTES: Int = 32
         private const val TAG_SIZE_BYTES: Int = 16
         private const val METADATA_BLOCK_SIZE: Int = 512
-        private const val METADATA_MAX_NAME_SIZE: Int = METADATA_BLOCK_SIZE - 8 - 2 // 502 بایت برای نام فایل
+        private const val METADATA_MAX_NAME_SIZE: Int = METADATA_BLOCK_SIZE - 8 - 2
         private const val HEADER_HASH_SIZE: Int = 32
 
         private const val ARGON2_TYPE: Int = Argon2Parameters.ARGON2_id

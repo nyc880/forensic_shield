@@ -9,6 +9,23 @@ enum class EngineType(val suffix: String, val zipSuffix: String) {
     EASY(".easy.enc", ".easy.zip.enc");
 
     companion object {
+
+        // --------------------------------------------------------------
+        // Container identification
+        // --------------------------------------------------------------
+
+        /** Version byte of the NEW modular engine (com.example.lock.enc). */
+        const val NEW_CONTAINER_VERSION: Byte = 0x03
+
+        /** Version byte of the LEGACY EncryptionManager format (v11). */
+        const val LEGACY_MAX_VERSION: Byte = 11
+
+        /** "CVLT" — shared by the legacy (v11) and the new (v0x03) format. */
+        private val MAGIC_CVLT = byteArrayOf(0x43, 0x56, 0x4C, 0x54)
+
+        /** "EZYS_EZY" — the real magic written by LightEncryptionManager. */
+        private const val MAGIC_EASY = "EZYS_EZY"
+
         private const val ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789"
         private const val RANDOM_LENGTH = 23
         private val RANDOM = SecureRandom()
@@ -50,6 +67,49 @@ enum class EngineType(val suffix: String, val zipSuffix: String) {
             }
         }
 
+        /**
+         * Reads the version byte of a CVLT container.
+         * Returns null when the file is not a CVLT container (or is too small).
+         */
+        private fun readCvltVersion(file: File): Byte? {
+            if (!file.exists() || !file.isFile || file.length() < 5) return null
+            return try {
+                file.inputStream().use { input ->
+                    val header = ByteArray(5)
+                    var off = 0
+                    while (off < header.size) {
+                        val n = input.read(header, off, header.size - off)
+                        if (n < 0) return null
+                        off += n
+                    }
+                    for (i in MAGIC_CVLT.indices) {
+                        if (header[i] != MAGIC_CVLT[i]) return null
+                    }
+                    header[4]
+                }
+            } catch (_: Exception) { null }
+        }
+
+        /**
+         * TRUE when [file] is a container produced by the LEGACY
+         * EncryptionManager (magic "CVLT" + version byte 11).
+         *
+         * The new modular engine CANNOT read those files (different format,
+         * no migration path), so every MAX decrypt call site must route them
+         * back to the legacy reader until the user re-encrypts them.
+         */
+        fun isLegacyMaxContainer(file: File): Boolean {
+            return readCvltVersion(file) == LEGACY_MAX_VERSION
+        }
+
+        /**
+         * TRUE when [file] is a container produced by the NEW modular engine
+         * (magic "CVLT" + version byte 0x03).
+         */
+        fun isNewMaxContainer(file: File): Boolean {
+            return readCvltVersion(file) == NEW_CONTAINER_VERSION
+        }
+
         fun detectFromFile(file: File): EngineType? {
             fromFileName(file.name)?.let { return it }
 
@@ -64,18 +124,20 @@ enum class EngineType(val suffix: String, val zipSuffix: String) {
                         off += n
                     }
 
-                    val magic8 = String(headerBytes, 0, 8, Charsets.US_ASCII)
-                    if (magic8 == "CVLT_EZY") {
+                    // EASY: the real magic written by LightEncryptionManager
+                    // is "EZYS_EZY" (the old "CVLT_EZY" check never matched).
+                    if (String(headerBytes, 0, 8, Charsets.US_ASCII) == MAGIC_EASY) {
                         return EASY
                     }
 
-                    if (headerBytes[0] == 0x43.toByte() &&
-                        headerBytes[1] == 0x56.toByte() &&
-                        headerBytes[2] == 0x4C.toByte() &&
-                        headerBytes[3] == 0x54.toByte() &&
-                        headerBytes[4] == 11.toByte()
-                    ) {
-                        return MAX
+                    for (i in MAGIC_CVLT.indices) {
+                        if (headerBytes[i] != MAGIC_CVLT[i]) return null
+                    }
+                    // "CVLT" is shared by the legacy (11) and the new (0x03)
+                    // MAX format; both are handled by the MAX branch and are
+                    // told apart by isLegacyMaxContainer().
+                    when (headerBytes[4]) {
+                        NEW_CONTAINER_VERSION, LEGACY_MAX_VERSION -> return MAX
                     }
                     null
                 }

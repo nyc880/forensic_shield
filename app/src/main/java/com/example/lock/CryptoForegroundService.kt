@@ -3,142 +3,203 @@ package com.example.lock
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
+import com.example.lock.ProcessingActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.util.Arrays
 
 class CryptoForegroundService : Service() {
 
     companion object {
-        // ==========================================
-        // CONFIGURATION & TUNABLE VARIABLES TABLE
-        // ==========================================
-        private const val CHANNEL_ID = "TitanCryptoChannel"
-        private const val CHANNEL_NAME = "Titan Encryption Service"
-        private const val NOTIFICATION_ID = 9901
-        private const val BUFFER_SIZE = 16384
-        private const val OUTPUT_FILE_EXTENSION = ".enc"
+        private const val CHANNEL_ID = "lock_crypto_channel"
+        private const val CHANNEL_NAME = "Encryption Service"
+        private const val NOTIFICATION_ID = 4101
+        private const val ACTION_STOP = "com.example.lock.action.STOP_CRYPTO_WORK"
+        private const val WAKELOCK_TIMEOUT_MS = 3 * 60 * 60 * 1000L
     }
 
-    private val serviceScope = CoroutineScope(Dispatchers.IO + Job())
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
-    }
+    private var progressJob: Job? = null
+    private var statusJob: Job? = null
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var lastPercent = -1
+    private var started = false
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
+        createChannel()
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val filePaths = intent?.getStringArrayListExtra("FILE_PATHS")
-        val passphraseChars = intent?.getCharArrayExtra("PASSPHRASE")
+    override fun onBind(intent: Intent?): IBinder? = null
 
-        if (filePaths.isNullOrEmpty() || passphraseChars == null) {
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            CryptoWorkState.requestCancel()
+            return START_NOT_STICKY
+        }
+
+        if (CryptoWorkState.status.value != CryptoWorkState.Status.RUNNING) {
             stopSelf()
             return START_NOT_STICKY
         }
 
-        val initialNotification = createNotification("Processing secure operational queue...", 0, filePaths.size)
-        startForeground(NOTIFICATION_ID, initialNotification)
-
-        serviceScope.launch {
-            try {
-                executeSecureQueue(filePaths, passphraseChars)
-            } finally {
-                Arrays.fill(passphraseChars, '\u0000')
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
-            }
+        if (!started) {
+            started = true
+            startForegroundCompat(buildProgressNotification(CryptoWorkState.progress.value))
+            acquireWakeLock()
+            observeWork()
         }
 
         return START_NOT_STICKY
     }
 
-    private fun executeSecureQueue(paths: List<String>, passphrase: CharArray) {
-        val totalFiles = paths.size
-        val chunkBuffer = ByteArray(BUFFER_SIZE)
+    override fun onDestroy() {
+        progressJob?.cancel()
+        statusJob?.cancel()
+        serviceScope.cancel()
+        releaseWakeLock()
+        super.onDestroy()
+    }
 
-        try {
-            for ((index, path) in paths.withIndex()) {
-                val targetFile = File(path)
-                if (!targetFile.exists() || !targetFile.isFile) continue
-
-                val updatedNotification = createNotification("Processing item ${index + 1} of $totalFiles", index + 1, totalFiles)
-                val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                notificationManager.notify(NOTIFICATION_ID, updatedNotification)
-
-                processSingleFileSecurely(targetFile, passphrase, chunkBuffer)
+    private fun observeWork() {
+        progressJob = serviceScope.launch {
+            CryptoWorkState.progress.collect { percent ->
+                if (percent != lastPercent) {
+                    lastPercent = percent
+                    notifyProgress(percent)
+                }
             }
-        } finally {
-            Arrays.fill(chunkBuffer, 0.toByte())
+        }
+        statusJob = serviceScope.launch {
+            CryptoWorkState.status.collect { status ->
+                if (status != CryptoWorkState.Status.RUNNING) finish(status)
+            }
         }
     }
 
-    private fun processSingleFileSecurely(inputFile: File, passphrase: CharArray, buffer: ByteArray) {
-        val outputFile = File(inputFile.parent, "${inputFile.name}$OUTPUT_FILE_EXTENSION")
-        var inputStream: FileInputStream? = null
-        var outputStream: FileOutputStream? = null
-
-        try {
-            inputStream = FileInputStream(inputFile)
-            outputStream = FileOutputStream(outputFile)
-
-            var readBytes: Int
-            while (inputStream.read(buffer).also { readBytes = it } != -1) {
-                outputStream.write(buffer, 0, readBytes)
-            }
-            outputStream.flush()
-        } catch (_: Exception) {
-            if (outputFile.exists()) {
-                outputFile.delete()
-            }
-        } finally {
-            try { inputStream?.close() } catch (_: Exception) {}
-            try { outputStream?.close() } catch (_: Exception) {}
-            Arrays.fill(buffer, 0.toByte())
+    private fun finish(status: CryptoWorkState.Status) {
+        releaseWakeLock()
+        val text = when (status) {
+            CryptoWorkState.Status.SUCCEEDED -> "100% — completed"
+            CryptoWorkState.Status.FAILED -> "Failed: ${CryptoWorkState.message.value}"
+            else -> "Cancelled"
         }
+        notifyFinal(text)
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_LOW
-            )
-            val manager = getSystemService(NotificationManager::class.java)
-            manager?.createNotificationChannel(channel)
-        }
+    private fun notifyProgress(percent: Int) {
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(NOTIFICATION_ID, buildProgressNotification(percent))
     }
 
-    private fun createNotification(contentText: String, currentProgress: Int, maxProgress: Int): Notification {
+    private fun notifyFinal(text: String) {
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(NOTIFICATION_ID, buildFinalNotification(text))
+    }
+
+    private fun buildProgressNotification(percent: Int): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Titan Security Core")
-            .setContentText(contentText)
-            .setSmallIcon(android.R.drawable.ic_popup_sync)
-            .setProgress(maxProgress, currentProgress, false)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setContentTitle("Lock")
+            .setContentText("$percent%")
+            .setProgress(100, percent, false)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setContentIntent(contentIntent())
+            .addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                "Stop",
+                stopIntent()
+            )
             .build()
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        serviceScope.cancel()
+    private fun buildFinalNotification(text: String): Notification {
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setContentTitle("Lock")
+            .setContentText(text)
+            .setProgress(0, 0, false)
+            .setOngoing(false)
+            .setAutoCancel(true)
+            .setContentIntent(contentIntent())
+            .build()
+    }
+
+    private fun pendingFlags(): Int {
+        var flags = PendingIntent.FLAG_UPDATE_CURRENT
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags = flags or PendingIntent.FLAG_IMMUTABLE
+        }
+        return flags
+    }
+
+    private fun contentIntent(): PendingIntent {
+        val intent = Intent(this, ProcessingActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        return PendingIntent.getActivity(this, 2, intent, pendingFlags())
+    }
+
+    private fun stopIntent(): PendingIntent {
+        val intent = Intent(this, CryptoForegroundService::class.java)
+        intent.action = ACTION_STOP
+        return PendingIntent.getService(this, 1, intent, pendingFlags())
+    }
+
+    private fun startForegroundCompat(notification: Notification) {
+        ServiceCompat.startForeground(
+            this,
+            NOTIFICATION_ID,
+            notification,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        )
+    }
+
+    private fun acquireWakeLock() {
+        if (wakeLock != null) return
+        val manager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        wakeLock = manager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "lock:CryptoWork").apply {
+            setReferenceCounted(false)
+            acquire(WAKELOCK_TIMEOUT_MS)
+        }
+    }
+
+    private fun releaseWakeLock() {
+        try {
+            if (wakeLock?.isHeld == true) wakeLock?.release()
+        } catch (_: Throwable) {
+        }
+        wakeLock = null
+    }
+
+    private fun createChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val manager = getSystemService(NotificationManager::class.java)
+        if (manager.getNotificationChannel(CHANNEL_ID) != null) return
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            setSound(null, null)
+            enableVibration(false)
+        }
+        manager.createNotificationChannel(channel)
     }
 }

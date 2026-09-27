@@ -10,7 +10,6 @@ class AutoDecryption(private val context: Context) {
     private var defaultFallbackEngine: EngineType = EngineType.MAX
 
     private val mediumManager = MediumEncryptionManager()
-    private val maxManager = EncryptionManager()
     private val lightManager = LightEncryptionManager()
 
     var lastActiveEngine: EngineType? = null
@@ -49,11 +48,16 @@ class AutoDecryption(private val context: Context) {
         val passChars = password.toCharArray()
         return try {
             when (engine) {
-                EngineType.MAX -> maxManager.decryptFile(
-                    inputFile = sourceFile,
-                    outputDirectory = outputDirectory,
-                    password = passChars
-                )
+                EngineType.MAX -> {
+                    if (EngineType.isLegacyMaxContainer(sourceFile)) {
+                        throw SecurityException("Legacy MAX container (v11) is not supported after engine migration. Please re-encrypt the file.")
+                    }
+                    MaxEngineAdapter.getInstance(context).decryptFile(
+                        inputFile = sourceFile,
+                        outputDirectory = outputDirectory,
+                        password = passChars
+                    )
+                }
                 EngineType.MEDIUM -> mediumManager.decryptFile(
                     inputFile = sourceFile,
                     outputDirectory = outputDirectory,

@@ -31,7 +31,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:gravity="center"
-            android:text="Are you sure? These files will be deleted forever and cannot be recovered."
+            android:text="A cleaned copy will be created in the no-meta folder."
             android:textColor="#FFCDD2"
             android:textSize="18sp"
             android:textStyle="bold" />
@@ -46,12 +46,23 @@
             android:textColor="#FFFFFF"
             android:textSize="16sp" />
 
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switch_safe_delete"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:enabled="true"
+            android:text="Securely delete original files"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            app:useMaterialThemeColors="true" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_confirm_delete"
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:layout_marginTop="28dp"
-            android:text="YES I'M SURE"
+            android:text="PURGE"
             android:textAllCaps="false"
             android:textColor="#000000"
             android:textSize="17sp"

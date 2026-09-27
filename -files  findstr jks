@@ -1,0 +1,1059 @@
+[1mdiff --git a/app/build.gradle.kts b/app/build.gradle.kts[m
+[1mindex e815503..69939b4 100644[m
+[1m--- a/app/build.gradle.kts[m
+[1m+++ b/app/build.gradle.kts[m
+[36m@@ -16,6 +16,9 @@[m [mplugins {[m
+ }[m
+ [m
+ android {[m
+[32m+[m
+[32m+[m[32m    ndkVersion = "27.0.12077973"[m
+[32m+[m
+     namespace = "com.example.lock"[m
+     compileSdk = compileSdkVer[m
+ [m
+[36m@@ -28,11 +31,31 @@[m [mandroid {[m
+ [m
+         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"[m
+ [m
+[32m+[m[32m        externalNativeBuild {[m
+[32m+[m[32m            cmake {[m
+[32m+[m[32m                cppFlags += listOf("-std=c++17")[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m
+         vectorDrawables {[m
+             useSupportLibrary = true[m
+         }[m
+     }[m
+ [m
+[32m+[m
+[32m+[m[32m    externalNativeBuild {[m
+[32m+[m[32m        cmake {[m
+[32m+[m[32m            path = file("src/main/cpp/CMakeLists.txt")[m
+[32m+[m
+[32m+[m[32m            version = "3.22.1"[m
+[32m+[m[32m        }[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m
+[32m+[m[32m    buildFeatures {[m
+[32m+[m[32m        buildConfig = true[m
+[32m+[m[32m    }[m
+[32m+[m
+     buildTypes {[m
+         release {[m
+             isMinifyEnabled = true[m
+[36m@@ -98,4 +121,9 @@[m [mdependencies {[m
+     testImplementation(libs.junit)[m
+     androidTestImplementation(libs.androidx.junit)[m
+     androidTestImplementation(libs.androidx.espresso.core)[m
+[31m-}[m
+\ No newline at end of file[m
+[32m+[m
+[32m+[m
+[32m+[m[32m    testImplementation("org.bouncycastle:bcprov-jdk18on:$bouncyCastleVersion")[m
+[32m+[m[41m  [m
+[32m+[m[32m    androidTestImplementation("androidx.test:core:1.6.1")[m
+[32m+[m[32m}[m
+[1mdiff --git a/app/proguard-rules.pro b/app/proguard-rules.pro[m
+[1mindex 481bb43..f2211fb 100644[m
+[1m--- a/app/proguard-rules.pro[m
+[1m+++ b/app/proguard-rules.pro[m
+[36m@@ -1,21 +1,16 @@[m
+[31m-# Add project specific ProGuard rules here.[m
+[31m-# You can control the set of applied configuration files using the[m
+[31m-# proguardFiles setting in build.gradle.[m
+[31m-#[m
+[31m-# For more details, see[m
+[31m-#   http://developer.android.com/guide/developing/tools/proguard.html[m
+[31m-[m
+[31m-# If your project uses WebView with JS, uncomment the following[m
+[31m-# and specify the fully qualified class name to the JavaScript interface[m
+[31m-# class:[m
+[31m-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {[m
+[31m-#   public *;[m
+[31m-#}[m
+[31m-[m
+[31m-# Uncomment this to preserve the line number information for[m
+[31m-# debugging stack traces.[m
+[31m-#-keepattributes SourceFile,LineNumberTable[m
+[31m-[m
+[31m-# If you keep the line number information, uncomment this to[m
+[31m-# hide the original source file name.[m
+[31m-#-renamesourcefileattribute SourceFile[m
+\ No newline at end of file[m
+[32m+[m[32m-keep class com.example.lock.enc.NativeMemoryManager { *; }[m
+[32m+[m[32m-keepclasseswithmembernames class * {[m
+[32m+[m[32m    native <methods>;[m
+[32m+[m[32m}[m
+[32m+[m[32m-keep class org.bouncycastle.crypto.** { *; }[m
+[32m+[m[32m-keep class org.bouncycastle.jcajce.** { *; }[m
+[32m+[m[32m-keep class org.bouncycastle.jce.** { *; }[m
+[32m+[m[32m-keep class org.bouncycastle.util.** { *; }[m
+[32m+[m[32m-dontwarn org.bouncycastle.**[m
+[32m+[m[32m-dontwarn java.awt.**[m
+[32m+[m[32m-dontwarn javax.naming.**[m
+[32m+[m[32m-dontwarn sun.security.**[m
+[32m+[m[32m-keepattributes SourceFile, LineNumberTable[m
+[32m+[m[32m-renamesourcefileattribute SourceFile[m
+[32m+[m[32m-dontwarn org.slf4j.**[m
+[32m+[m[32m-dontwarn com.google.errorprone.**[m
+[1mdiff --git a/app/src/main/java/com/example/lock/EncryptionProcessor.kt b/app/src/main/java/com/example/lock/EncryptionProcessor.kt[m
+[1mindex 5147c68..0990f0c 100644[m
+[1m--- a/app/src/main/java/com/example/lock/EncryptionProcessor.kt[m
+[1m+++ b/app/src/main/java/com/example/lock/EncryptionProcessor.kt[m
+[36m@@ -4,8 +4,8 @@[m [mimport android.content.Context[m
+ import android.os.Build[m
+ import android.os.Environment[m
+ import android.util.Log[m
+[31m-import com.example.lock.crypto.EncryptionManager[m
+ import com.example.lock.crypto.EngineType[m
+[32m+[m[32mimport com.example.lock.crypto.MaxEngineAdapter[m
+ import com.example.lock.crypto.LightEncryptionManager[m
+ import com.example.lock.crypto.Lock[m
+ import com.example.lock.safe_delete.PurgeOptions[m
+[36m@@ -151,8 +151,27 @@[m [mclass EncryptionProcessor(private val context: Context) {[m
+         onProgress: ((Int) -> Unit)? = null[m
+     ): File {[m
+         return when (engineType) {[m
+[31m-            EngineType.MAX -> EncryptionManager().encryptFile(inputFile, outputDir, password.copyOf()) { snap: EncryptionManager.ProgressSnapshot ->[m
+[31m-                onProgress?.invoke(snap.percent)[m
+[32m+[m[32m            EngineType.MAX -> {[m
+[32m+[m[32m                val copy = password.copyOf()[m
+[32m+[m[32m                try {[m
+[32m+[m[32m                    val total = inputFile.length()[m
+[32m+[m[32m                    val out = MaxEngineAdapter.getInstance(context).encryptFile([m
+[32m+[m[32m                        inputFile = inputFile,[m
+[32m+[m[32m                        outputDirectory = outputDir,[m
+[32m+[m[32m                        password = copy,[m
+[32m+[m[32m                        onProgress = { processed ->[m
+[32m+[m[32m                            if (total > 0L) {[m
+[32m+[m[32m                                onProgress?.invoke([m
+[32m+[m[32m                                    ((processed * 100L) / total).toInt().coerceIn(0, 100)[m
+[32m+[m[32m                                )[m
+[32m+[m[32m                            }[m
+[32m+[m[32m                        }[m
+[32m+[m[32m                    )[m
+[32m+[m[32m                    onProgress?.invoke(100)[m
+[32m+[m[32m                    out[m
+[32m+[m[32m                } finally {[m
+[32m+[m[32m                    java.util.Arrays.fill(copy, '\u0000')[m
+[32m+[m[32m                }[m
+             }[m
+             EngineType.MEDIUM -> {[m
+                 val passBytes = password.concatToString().toByteArray(Charsets.UTF_8)[m
+[36m@@ -184,8 +203,27 @@[m [mclass EncryptionProcessor(private val context: Context) {[m
+         var firstLayerFile: File? = null[m
+         try {[m
+             firstLayerFile = when (engineType) {[m
+[31m-                EngineType.MAX -> EncryptionManager().encryptFile(inputFile, context.cacheDir, firstPassword.copyOf()) { snap: EncryptionManager.ProgressSnapshot ->[m
+[31m-                    onProgress?.invoke(snap.percent / 2)[m
+[32m+[m[32m                EngineType.MAX -> {[m
+[32m+[m[32m                    val copy = firstPassword.copyOf()[m
+[32m+[m[32m                    try {[m
+[32m+[m[32m                        val total = inputFile.length()[m
+[32m+[m[32m                        val tmp = MaxEngineAdapter.getInstance(context).encryptFile([m
+[32m+[m[32m                            inputFile = inputFile,[m
+[32m+[m[32m                            outputDirectory = context.cacheDir,[m
+[32m+[m[32m                            password = copy,[m
+[32m+[m[32m                            onProgress = { processed ->[m
+[32m+[m[32m                                if (total > 0L) {[m
+[32m+[m[32m                                    onProgress?.invoke([m
+[32m+[m[32m                                        (((processed * 100L) / total) / 2L).toInt().coerceIn(0, 50)[m
+[32m+[m[32m                                    )[m
+[32m+[m[32m                                }[m
+[32m+[m[32m                            }[m
+[32m+[m[32m                        )[m
+[32m+[m[32m                        onProgress?.invoke(50)[m
+[32m+[m[32m                        tmp[m
+[32m+[m[32m                    } finally {[m
+[32m+[m[32m                        java.util.Arrays.fill(copy, '\u0000')[m
+[32m+[m[32m                    }[m
+                 }[m
+                 EngineType.MEDIUM -> {[m
+                     val tmp = File(context.cacheDir, EngineType.generateFileName(engineType))[m
+[36m@@ -198,8 +236,27 @@[m [mclass EncryptionProcessor(private val context: Context) {[m
+             }[m
+ [m
+             val secondLayerFile = when (secondEngineType) {[m
+[31m-                EngineType.MAX -> EncryptionManager().encryptFile(firstLayerFile, outputDir, secondPassword.copyOf()) { snap: EncryptionManager.ProgressSnapshot ->[m
+[31m-                    onProgress?.invoke(50 + snap.percent / 2)[m
+[32m+[m[32m                EngineType.MAX -> {[m
+[32m+[m[32m                    val copy = secondPassword.copyOf()[m
+[32m+[m[32m                    try {[m
+[32m+[m[32m                        val total = firstLayerFile.length()[m
+[32m+[m[32m                        val out = MaxEngineAdapter.getInstance(context).encryptFile([m
+[32m+[m[32m                            inputFile = firstLayerFile,[m
+[32m+[m[32m                            outputDirectory = outputDir,[m
+[32m+[m[32m                            password = copy,[m
+[32m+[m[32m                            onProgress = { processed ->[m
+[32m+[m[32m                                if (total > 0L) {[m
+[32m+[m[32m                                    onProgress?.invoke([m
+[32m+[m[32m                                        (50L + ((processed * 100L) / total) / 2L).toInt().coerceIn(0, 100)[m
+[32m+[m[32m                                    )[m
+[32m+[m[32m                                }[m
+[32m+[m[32m                            }[m
+[32m+[m[32m                        )[m
+[32m+[m[32m                        onProgress?.invoke(100)[m
+[32m+[m[32m                        out[m
+[32m+[m[32m                    } finally {[m
+[32m+[m[32m                        java.util.Arrays.fill(copy, '\u0000')[m
+[32m+[m[32m                    }[m
+                 }[m
+                 EngineType.MEDIUM -> {[m
+                     val out = File(outputDir, EngineType.generateFileName(secondEngineType))[m
+[1mdiff --git a/app/src/main/java/com/example/lock/EncryptionSettingsActivity.kt b/app/src/main/java/com/example/lock/EncryptionSettingsActivity.kt[m
+[1mindex 7d6abb6..57ca739 100644[m
+[1m--- a/app/src/main/java/com/example/lock/EncryptionSettingsActivity.kt[m
+[1m+++ b/app/src/main/java/com/example/lock/EncryptionSettingsActivity.kt[m
+[36m@@ -86,11 +86,6 @@[m [mclass EncryptionSettingsActivity : AppCompatActivity() {[m
+                 passwordInput.requestFocus()[m
+                 return@setOnClickListener[m
+             }[m
+[31m-            if (password.length < 4) {[m
+[31m-                tilPassword.error = "Password too short (min 4)"[m
+[31m-                return@setOnClickListener[m
+[31m-            }[m
+[31m-[m
+             if (dualPasswordCheckBox.isChecked) {[m
+                 if (secondPassword.isEmpty()) {[m
+                     tilSecondPassword.error = "Please enter second password"[m
+[36m@@ -101,10 +96,6 @@[m [mclass EncryptionSettingsActivity : AppCompatActivity() {[m
+                     tilSecondPassword.error = "Second password must be different"[m
+                     return@setOnClickListener[m
+                 }[m
+[31m-                if (secondPassword.length < 4) {[m
+[31m-                    tilSecondPassword.error = "Second password too short"[m
+[31m-                    return@setOnClickListener[m
+[31m-                }[m
+             }[m
+ [m
+             val encType = if (justZipCheckBox.isChecked) "JUST_ZIP" else "JUST_FILES"[m
+[1mdiff --git a/app/src/main/java/com/example/lock/MyApplication.kt b/app/src/main/java/com/example/lock/MyApplication.kt[m
+[1mindex 24dd78b..9f6e2aa 100644[m
+[1m--- a/app/src/main/java/com/example/lock/MyApplication.kt[m
+[1m+++ b/app/src/main/java/com/example/lock/MyApplication.kt[m
+[36m@@ -9,6 +9,17 @@[m [mclass MyApplication : Application() {[m
+     override fun onCreate() {[m
+         super.onCreate()[m
+ [m
+[32m+[m[32m        com.example.lock.crypto.SecureEngineBootstrap.init(this)[m
+[32m+[m[32m        // ===== TEST =====[m
+[32m+[m[32m        try {[m
+[32m+[m[32m            System.loadLibrary("cvltsec_native")[m
+[32m+[m[32m            android.util.Log.d("LOCK_SEC", "loadLibrary OK")[m
+[32m+[m[32m        } catch (t: Throwable) {[m
+[32m+[m[32m            android.util.Log.e("LOCK_SEC", "loadLibrary FAILED: ${t.javaClass.name}: ${t.message}", t)[m
+[32m+[m[32m        }[m
+[32m+[m[32m        android.util.Log.d("LOCK_SEC", "native available = ${com.example.lock.enc.NativeMemoryManager.isNativeAvailable()}")[m
+[32m+[m[32m        // ===== /TEST =====[m
+[32m+[m
+         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {[m
+             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {[m
+                 activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)[m
+[1mdiff --git a/app/src/main/java/com/example/lock/ProcessingActivity.kt b/app/src/main/java/com/example/lock/ProcessingActivity.kt[m
+[1mindex bc7ee05..ef0d429 100644[m
+[1m--- a/app/src/main/java/com/example/lock/ProcessingActivity.kt[m
+[1m+++ b/app/src/main/java/com/example/lock/ProcessingActivity.kt[m
+[36m@@ -10,10 +10,10 @@[m [mimport android.widget.ProgressBar[m
+ import android.widget.TextView[m
+ import androidx.appcompat.app.AppCompatActivity[m
+ import androidx.lifecycle.lifecycleScope[m
+[31m-import com.example.lock.crypto.EncryptionManager[m
+ import com.example.lock.crypto.EngineType[m
+ import com.example.lock.crypto.LightEncryptionManager[m
+ import com.example.lock.crypto.Lock[m
+[32m+[m[32mimport com.example.lock.crypto.MaxEngineAdapter[m
+ import com.example.lock.file_manager.FilePreviewActivity[m
+ import com.google.android.material.button.MaterialButton[m
+ import kotlinx.coroutines.CancellationException[m
+[36m@@ -339,6 +339,9 @@[m [mclass ProcessingActivity : AppCompatActivity() {[m
+                     lifecycleScope.launch { updateProgressOnMainThread(((completedFiles * 100) / totalFiles).coerceIn(0, 100)) }[m
+                 } catch (e: Exception) {[m
+                     if (e is CancellationException || isCancelledFlag) throw e[m
+[32m+[m[32m                    if (e is com.example.lock.enc.OperationCancelledException) {[m
+[32m+[m[32m                        throw CancellationException("Operation cancelled by user.")[m
+[32m+[m[32m                    }[m
+                     allSuccess = false[m
+                     Log.e(TAG, "Failed to decrypt file ${inputFile.name}: ${e.message}", e)[m
+                     throw Exception("Failed to decrypt ${inputFile.name}: ${e.message}", e)[m
+[36m@@ -364,17 +367,24 @@[m [mclass ProcessingActivity : AppCompatActivity() {[m
+ [m
+         val decryptedFile: File = when (engineType) {[m
+             EngineType.MAX -> {[m
+[31m-                EncryptionManager().decryptFile([m
+[31m-                    inputFile = inputFile,[m
+[31m-                    outputDirectory = workDirectory,[m
+[31m-                    password = password.toCharArray(),[m
+[31m-                    onProgress = { snap: EncryptionManager.ProgressSnapshot ->[m
+[31m-                        if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")[m
+[31m-                        val base = (completedFiles * 100) / totalFiles[m
+[31m-                        val portion = snap.percent / totalFiles[m
+[31m-                        lifecycleScope.launch { updateProgressOnMainThread((base + portion).coerceIn(0, 100)) }[m
+[32m+[m[32m                val passChars = password.toCharArray()[m
+[32m+[m[32m                try {[m
+[32m+[m[32m                    val adapter = MaxEngineAdapter.getInstance(this@ProcessingActivity)[m
+[32m+[m[32m                    if (EngineType.isLegacyMaxContainer(inputFile)) {[m
+[32m+[m[32m                        adapter.decryptLegacy(inputFile, workDirectory, passChars)[m
+[32m+[m[32m                    } else {[m
+[32m+[m[32m                        decryptWithProgress([m
+[32m+[m[32m                            adapter = adapter,[m
+[32m+[m[32m                            inputFile = inputFile,[m
+[32m+[m[32m                            outputDirectory = workDirectory,[m
+[32m+[m[32m                            password = passChars,[m
+[32m+[m[32m                            basePercent = (completedFiles * 100) / totalFiles,[m
+[32m+[m[32m                            sharePercent = 100 / totalFiles[m
+[32m+[m[32m                        )[m
+                     }[m
+[31m-                )[m
+[32m+[m[32m                } finally {[m
+[32m+[m[32m                    java.util.Arrays.fill(passChars, '\u0000')[m
+[32m+[m[32m                }[m
+             }[m
+             EngineType.MEDIUM -> {[m
+                 if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")[m
+[36m@@ -412,17 +422,24 @@[m [mclass ProcessingActivity : AppCompatActivity() {[m
+ [m
+         val outerDecryptedFile: File = when (outerEngineType) {[m
+             EngineType.MAX -> {[m
+[31m-                EncryptionManager().decryptFile([m
+[31m-                    inputFile = inputFile,[m
+[31m-                    outputDirectory = workDirectory,[m
+[31m-                    password = secondPassword.toCharArray(),[m
+[31m-                    onProgress = { snap: EncryptionManager.ProgressSnapshot ->[m
+[31m-                        if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")[m
+[31m-                        val base = (completedFiles * 100) / totalFiles[m
+[31m-                        val portion = (snap.percent / 2) / totalFiles[m
+[31m-                        lifecycleScope.launch { updateProgressOnMainThread((base + portion).coerceIn(0, 100)) }[m
+[32m+[m[32m                val passChars = secondPassword.toCharArray()[m
+[32m+[m[32m                try {[m
+[32m+[m[32m                    val adapter = MaxEngineAdapter.getInstance(this@ProcessingActivity)[m
+[32m+[m[32m                    if (EngineType.isLegacyMaxContainer(inputFile)) {[m
+[32m+[m[32m                        adapter.decryptLegacy(inputFile, workDirectory, passChars)[m
+[32m+[m[32m                    } else {[m
+[32m+[m[32m                        decryptWithProgress([m
+[32m+[m[32m                            adapter = adapter,[m
+[32m+[m[32m                            inputFile = inputFile,[m
+[32m+[m[32m                            outputDirectory = workDirectory,[m
+[32m+[m[32m                            password = passChars,[m
+[32m+[m[32m                            basePercent = (completedFiles * 100) / totalFiles,[m
+[32m+[m[32m                            sharePercent = 100 / totalFiles[m
+[32m+[m[32m                        )[m
+                     }[m
+[31m-                )[m
+[32m+[m[32m                } finally {[m
+[32m+[m[32m                    java.util.Arrays.fill(passChars, '\u0000')[m
+[32m+[m[32m                }[m
+             }[m
+             EngineType.MEDIUM -> {[m
+                 if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")[m
+[36m@@ -446,6 +463,31 @@[m [mclass ProcessingActivity : AppCompatActivity() {[m
+         handleDecryptedArtifact(outerDecryptedFile, firstPassword, finalOutputDirectory, workDirectory, 0)[m
+     }[m
+ [m
+[32m+[m[32m    private fun decryptWithProgress([m
+[32m+[m[32m        adapter: MaxEngineAdapter,[m
+[32m+[m[32m        inputFile: File,[m
+[32m+[m[32m        outputDirectory: File,[m
+[32m+[m[32m        password: CharArray,[m
+[32m+[m[32m        basePercent: Int,[m
+[32m+[m[32m        sharePercent: Int[m
+[32m+[m[32m    ): File {[m
+[32m+[m[32m        val total = inputFile.length()[m
+[32m+[m[32m        return adapter.decryptFile([m
+[32m+[m[32m            inputFile = inputFile,[m
+[32m+[m[32m            outputDirectory = outputDirectory,[m
+[32m+[m[32m            password = password,[m
+[32m+[m[32m            onProgress = { processed ->[m
+[32m+[m[32m                if (isCancelledFlag) throw CancellationException("Operation cancelled by user.")[m
+[32m+[m[32m                if (total > 0L) {[m
+[32m+[m[32m                    val done = ((processed * 100L) / total).toInt().coerceIn(0, 100)[m
+[32m+[m[32m                    val percent = basePercent + (done * sharePercent) / 100[m
+[32m+[m[32m                    lifecycleScope.launch { updateProgressOnMainThread(percent.coerceIn(0, 100)) }[m
+[32m+[m[32m                }[m
+[32m+[m[32m            },[m
+[32m+[m[32m            isCancelled = { isCancelledFlag }[m
+[32m+[m[32m        )[m
+[32m+[m[32m    }[m
+[32m+[m
+     private fun decryptWithLockSingle(inputFile: File, workDir: File, password: String): File {[m
+         val passBytes = password.toByteArray(Charsets.UTF_8)[m
+         val tmpOut = File(workDir, "lock_dec_${System.nanoTime()}.tmp")[m
+[36m@@ -545,7 +587,26 @@[m [mclass ProcessingActivity : AppCompatActivity() {[m
+             lifecycleScope.launch { updateStageOnMainThread("Decrypting inner layer") }[m
+             val innerEngineType = EngineType.detectFromFile(artifact) ?: EngineType.MAX[m
+             val innerDecrypted: File = when (innerEngineType) {[m
+[31m-                EngineType.MAX -> EncryptionManager().decryptFile(artifact, workDirectory, passwordForNestedEncryptedFiles.toCharArray())[m
+[32m+[m[32m                EngineType.MAX -> {[m
+[32m+[m[32m                    val passChars = passwordForNestedEncryptedFiles.toCharArray()[m
+[32m+[m[32m                    try {[m
+[32m+[m[32m                        val adapter = MaxEngineAdapter.getInstance(this@ProcessingActivity)[m
+[32m+[m[32m                        if (EngineType.isLegacyMaxContainer(artifact)) {[m
+[32m+[m[32m                            adapter.decryptLegacy(artifact, workDirectory, passChars)[m
+[32m+[m[32m                        } else {[m
+[32m+[m[32m                            decryptWithProgress([m
+[32m+[m[32m                                adapter = adapter,[m
+[32m+[m[32m                                inputFile = artifact,[m
+[32m+[m[32m                                outputDirectory = workDirectory,[m
+[32m+[m[32m                                password = passChars,[m
+[32m+[m[32m                                basePercent = 0,[m
+[32m+[m[32m                                sharePercent = 100[m
+[32m+[m[32m                            )[m
+[32m+[m[32m                        }[m
+[32m+[m[32m                    } finally {[m
+[32m+[m[32m                        java.util.Arrays.fill(passChars, '\u0000')[m
+[32m+[m[32m                    }[m
+[32m+[m[32m                }[m
+                 EngineType.MEDIUM -> decryptWithLockSingle(artifact, workDirectory, passwordForNestedEncryptedFiles)[m
+                 EngineType.EASY -> LightEncryptionManager().decryptFile(artifact, workDirectory, passwordForNestedEncryptedFiles.toCharArray(), isCancelled = { isCancelledFlag })[m
+             }[m
+[1mdiff --git a/app/src/main/java/com/example/lock/crypto/AutoDecryptionManager.kt b/app/src/main/java/com/example/lock/crypto/AutoDecryptionManager.kt[m
+[1mindex 0c99330..21cfcbd 100644[m
+[1m--- a/app/src/main/java/com/example/lock/crypto/AutoDecryptionManager.kt[m
+[1m+++ b/app/src/main/java/com/example/lock/crypto/AutoDecryptionManager.kt[m
+[36m@@ -49,11 +49,19 @@[m [mclass AutoDecryption(private val context: Context) {[m
+         val passChars = password.toCharArray()[m
+         return try {[m
+             when (engine) {[m
+[31m-                EngineType.MAX -> maxManager.decryptFile([m
+[31m-                    inputFile = sourceFile,[m
+[31m-                    outputDirectory = outputDirectory,[m
+[31m-                    password = passChars[m
+[31m-                )[m
+[32m+[m[32m                EngineType.MAX -> if (EngineType.isLegacyMaxContainer(sourceFile)) {[m
+[32m+[m[32m                    maxManager.decryptFile([m
+[32m+[m[32m                        inputFile = sourceFile,[m
+[32m+[m[32m                        outputDirectory = outputDirectory,[m
+[32m+[m[32m                        password = passChars[m
+[32m+[m[32m                    )[m
+[32m+[m[32m                } else {[m
+[32m+[m[32m                    MaxEngineAdapter.getInstance(context).decryptFile([m
+[32m+[m[32m                        inputFile = sourceFile,[m
+[32m+[m[32m                        outputDirectory = outputDirectory,[m
+[32m+[m[32m                        password = passChars[m
+[32m+[m[32m                    )[m
+[32m+[m[32m                }[m
+                 EngineType.MEDIUM -> mediumManager.decryptFile([m
+                     inputFile = sourceFile,[m
+                     outputDirectory = outputDirectory,[m
+[1mdiff --git a/app/src/main/java/com/example/lock/crypto/EngineType.kt b/app/src/main/java/com/example/lock/crypto/EngineType.kt[m
+[1mindex 470d4a0..aa40bd0 100644[m
+[1m--- a/app/src/main/java/com/example/lock/crypto/EngineType.kt[m
+[1m+++ b/app/src/main/java/com/example/lock/crypto/EngineType.kt[m
+[36m@@ -9,6 +9,23 @@[m [menum class EngineType(val suffix: String, val zipSuffix: String) {[m
+     EASY(".easy.enc", ".easy.zip.enc");[m
+ [m
+     companion object {[m
+[32m+[m
+[32m+[m[32m        // --------------------------------------------------------------[m
+[32m+[m[32m        // Container identification[m
+[32m+[m[32m        // --------------------------------------------------------------[m
+[32m+[m
+[32m+[m[32m        /** Version byte of the NEW modular engine (com.example.lock.enc). */[m
+[32m+[m[32m        const val NEW_CONTAINER_VERSION: Byte = 0x03[m
+[32m+[m
+[32m+[m[32m        /** Version byte of the LEGACY EncryptionManager format (v11). */[m
+[32m+[m[32m        const val LEGACY_MAX_VERSION: Byte = 11[m
+[32m+[m
+[32m+[m[32m        /** "CVLT" — shared by the legacy (v11) and the new (v0x03) format. */[m
+[32m+[m[32m        private val MAGIC_CVLT = byteArrayOf(0x43, 0x56, 0x4C, 0x54)[m
+[32m+[m
+[32m+[m[32m        /** "EZYS_EZY" — the real magic written by LightEncryptionManager. */[m
+[32m+[m[32m        private const val MAGIC_EASY = "EZYS_EZY"[m
+[32m+[m
+         private const val ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789"[m
+         private const val RANDOM_LENGTH = 23[m
+         private val RANDOM = SecureRandom()[m
+[36m@@ -50,6 +67,49 @@[m [menum class EngineType(val suffix: String, val zipSuffix: String) {[m
+             }[m
+         }[m
+ [m
+[32m+[m[32m        /**[m
+[32m+[m[32m         * Reads the version byte of a CVLT container.[m
+[32m+[m[32m         * Returns null when the file is not a CVLT container (or is too small).[m
+[32m+[m[32m         */[m
+[32m+[m[32m        private fun readCvltVersion(file: File): Byte? {[m
+[32m+[m[32m            if (!file.exists() || !file.isFile || file.length() < 5) return null[m
+[32m+[m[32m            return try {[m
+[32m+[m[32m                file.inputStream().use { input ->[m
+[32m+[m[32m                    val header = ByteArray(5)[m
+[32m+[m[32m                    var off = 0[m
+[32m+[m[32m                    while (off < header.size) {[m
+[32m+[m[32m                        val n = input.read(header, off, header.size - off)[m
+[32m+[m[32m                        if (n < 0) return null[m
+[32m+[m[32m                        off += n[m
+[32m+[m[32m                    }[m
+[32m+[m[32m                    for (i in MAGIC_CVLT.indices) {[m
+[32m+[m[32m                        if (header[i] != MAGIC_CVLT[i]) return null[m
+[32m+[m[32m                    }[m
+[32m+[m[32m                    header[4][m
+[32m+[m[32m                }[m
+[32m+[m[32m            } catch (_: Exception) { null }[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        /**[m
+[32m+[m[32m         * TRUE when [file] is a container produced by the LEGACY[m
+[32m+[m[32m         * EncryptionManager (magic "CVLT" + version byte 11).[m
+[32m+[m[32m         *[m
+[32m+[m[32m         * The new modular engine CANNOT read those files (different format,[m
+[32m+[m[32m         * no migration path), so every MAX decrypt call site must route them[m
+[32m+[m[32m         * back to the legacy reader until the user re-encrypts them.[m
+[32m+[m[32m         */[m
+[32m+[m[32m        fun isLegacyMaxContainer(file: File): Boolean {[m
+[32m+[m[32m            return readCvltVersion(file) == LEGACY_MAX_VERSION[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        /**[m
+[32m+[m[32m         * TRUE when [file] is a container produced by the NEW modular engine[m
+[32m+[m[32m         * (magic "CVLT" + version byte 0x03).[m
+[32m+[m[32m         */[m
+[32m+[m[32m        fun isNewMaxContainer(file: File): Boolean {[m
+[32m+[m[32m            return readCvltVersion(file) == NEW_CONTAINER_VERSION[m
+[32m+[m[32m        }[m
+[32m+[m
+         fun detectFromFile(file: File): EngineType? {[m
+             fromFileName(file.name)?.let { return it }[m
+ [m
+[36m@@ -64,18 +124,20 @@[m [menum class EngineType(val suffix: String, val zipSuffix: String) {[m
+                         off += n[m
+                     }[m
+ [m
+[31m-                    val magic8 = String(headerBytes, 0, 8, Charsets.US_ASCII)[m
+[31m-                    if (magic8 == "CVLT_EZY") {[m
+[32m+[m[32m                    // EASY: the real magic written by LightEncryptionManager[m
+[32m+[m[32m                    // is "EZYS_EZY" (the old "CVLT_EZY" check never matched).[m
+[32m+[m[32m                    if (String(headerBytes, 0, 8, Charsets.US_ASCII) == MAGIC_EASY) {[m
+                         return EASY[m
+                     }[m
+ [m
+[31m-                    if (headerBytes[0] == 0x43.toByte() &&[m
+[31m-                        headerBytes[1] == 0x56.toByte() &&[m
+[31m-                        headerBytes[2] == 0x4C.toByte() &&[m
+[31m-                        headerBytes[3] == 0x54.toByte() &&[m
+[31m-                        headerBytes[4] == 11.toByte()[m
+[31m-                    ) {[m
+[31m-                        return MAX[m
+[32m+[m[32m                    for (i in MAGIC_CVLT.indices) {[m
+[32m+[m[32m                        if (headerBytes[i] != MAGIC_CVLT[i]) return null[m
+[32m+[m[32m                    }[m
+[32m+[m[32m                    // "CVLT" is shared by the legacy (11) and the new (0x03)[m
+[32m+[m[32m                    // MAX format; both are handled by the MAX branch and are[m
+[32m+[m[32m                    // told apart by isLegacyMaxContainer().[m
+[32m+[m[32m                    when (headerBytes[4]) {[m
+[32m+[m[32m                        NEW_CONTAINER_VERSION, LEGACY_MAX_VERSION -> return MAX[m
+                     }[m
+                     null[m
+                 }[m
+[36m@@ -114,4 +176,4 @@[m [menum class EngineType(val suffix: String, val zipSuffix: String) {[m
+             return lower.endsWith(".zip.enc")[m
+         }[m
+     }[m
+[31m-}[m
+\ No newline at end of file[m
+[32m+[m[32m}[m
+[1mdiff --git a/app/src/main/res/layout/activity_encryption_settings.xml b/app/src/main/res/layout/activity_encryption_settings.xml[m
+[1mindex efb6059..bb77655 100644[m
+[1m--- a/app/src/main/res/layout/activity_encryption_settings.xml[m
+[1m+++ b/app/src/main/res/layout/activity_encryption_settings.xml[m
+[36m@@ -4,13 +4,11 @@[m
+     android:id="@+id/root_encryption_settings"[m
+     android:layout_width="match_parent"[m
+     android:layout_height="match_parent"[m
+[31m-    android:background="#0A0E14"[m
+[32m+[m[32m    android:background="#06090E"[m
+     android:clickable="true"[m
+     android:focusable="true"[m
+     android:focusableInTouchMode="true"[m
+[31m-    android:fitsSystemWindows="true"[m
+[31m-    android:paddingTop="8dp"[m
+[31m-    android:paddingBottom="8dp">[m
+[32m+[m[32m    android:fitsSystemWindows="true">[m
+ [m
+     <ScrollView[m
+         android:id="@+id/scroll_content"[m
+[36m@@ -19,10 +17,10 @@[m
+         android:layout_above="@+id/btn_start"[m
+         android:clipToPadding="false"[m
+         android:fillViewport="true"[m
+[31m-        android:paddingStart="16dp"[m
+[31m-        android:paddingEnd="16dp"[m
+[31m-        android:paddingTop="12dp"[m
+[31m-        android:paddingBottom="16dp"[m
+[32m+[m[32m        android:paddingStart="14dp"[m
+[32m+[m[32m        android:paddingEnd="14dp"[m
+[32m+[m[32m        android:paddingTop="10dp"[m
+[32m+[m[32m        android:paddingBottom="10dp"[m
+         android:scrollbars="none">[m
+ [m
+         <LinearLayout[m
+[36m@@ -30,215 +28,254 @@[m
+             android:layout_height="wrap_content"[m
+             android:orientation="vertical">[m
+ [m
+[31m-            <TextView[m
+[32m+[m[32m            <com.google.android.material.card.MaterialCardView[m
+                 android:layout_width="match_parent"[m
+                 android:layout_height="wrap_content"[m
+[31m-                android:layout_marginBottom="8dp"[m
+[31m-                android:letterSpacing="0.08"[m
+[31m-                android:text="PASSWORD"[m
+[31m-                android:textColor="#E0E0E0"[m
+[31m-                android:textSize="11sp"[m
+[31m-                android:textStyle="bold" />[m
+[31m-[m
+[31m-            <com.google.android.material.textfield.TextInputLayout[m
+[31m-                android:id="@+id/til_password"[m
+[31m-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"[m
+[31m-                android:layout_width="match_parent"[m
+[31m-                android:layout_height="wrap_content"[m
+[31m-                android:hint="Enter Password"[m
+[31m-                android:textColorHint="#FF9800"[m
+[31m-                app:boxBackgroundMode="outline"[m
+[31m-                app:boxCornerRadiusBottomEnd="12dp"[m
+[31m-                app:boxCornerRadiusBottomStart="12dp"[m
+[31m-                app:boxCornerRadiusTopEnd="12dp"[m
+[31m-                app:boxCornerRadiusTopStart="12dp"[m
+[31m-                app:boxStrokeColor="#FF9800"[m
+[31m-                app:boxStrokeWidth="2dp"[m
+[31m-                app:boxStrokeWidthFocused="3dp"[m
+[31m-                app:boxBackgroundColor="#33FF9800"[m
+[31m-                app:endIconMode="password_toggle"[m
+[31m-                app:endIconTint="#00FFFF"[m
+[31m-                app:hintEnabled="true"[m
+[31m-                app:hintTextColor="#FF9800"[m
+[31m-                app:passwordToggleEnabled="false">[m
+[31m-[m
+[31m-                <com.google.android.material.textfield.TextInputEditText[m
+[31m-                    android:id="@+id/et_password"[m
+[32m+[m[32m                android:layout_marginBottom="10dp"[m
+[32m+[m[32m                app:cardBackgroundColor="#0D1117"[m
+[32m+[m[32m                app:cardCornerRadius="14dp"[m
+[32m+[m[32m                app:cardElevation="0dp"[m
+[32m+[m[32m                app:strokeColor="#21262D"[m
+[32m+[m[32m                app:strokeWidth="1dp">[m
+[32m+[m
+[32m+[m[32m                <LinearLayout[m
+                     android:layout_width="match_parent"[m
+                     android:layout_height="wrap_content"[m
+[31m-                    android:inputType="textPassword"[m
+[31m-                    android:padding="16dp"[m
+[31m-                    android:textColor="#FFFFFF"[m
+[31m-                    android:textColorHint="#80FF9800"[m
+[31m-                    android:textSize="15sp" />[m
+[32m+[m[32m                    android:orientation="vertical"[m
+[32m+[m[32m                    android:padding="12dp">[m
+ [m
+[31m-            </com.google.android.material.textfield.TextInputLayout>[m
+[32m+[m[32m                    <TextView[m
+[32m+[m[32m                        android:layout_width="match_parent"[m
+[32m+[m[32m                        android:layout_height="wrap_content"[m
+[32m+[m[32m                        android:layout_marginBottom="6dp"[m
+[32m+[m[32m                        android:letterSpacing="0.08"[m
+[32m+[m[32m                        android:text="🔑  MAIN PASSPHRASE"[m
+[32m+[m[32m                        android:textColor="#8B949E"[m
+[32m+[m[32m                        android:textSize="11sp"[m
+[32m+[m[32m                        android:textStyle="bold" />[m
+ [m
+[31m-            <View[m
+[31m-                android:layout_width="match_parent"[m
+[31m-                android:layout_height="1dp"[m
+[31m-                android:layout_marginTop="16dp"[m
+[31m-                android:layout_marginBottom="16dp"[m
+[31m-                android:background="#1E2A3A" />[m
+[32m+[m[32m                    <com.google.android.material.textfield.TextInputLayout[m
+[32m+[m[32m                        android:id="@+id/til_password"[m
+[32m+[m[32m                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"[m
+[32m+[m[32m                        android:layout_width="match_parent"[m
+[32m+[m[32m                        android:layout_height="wrap_content"[m
+[32m+[m[32m                        android:hint="Enter Master Password"[m
+[32m+[m[32m                        app:boxBackgroundMode="outline"[m
+[32m+[m[32m                        app:boxCornerRadiusBottomEnd="10dp"[m
+[32m+[m[32m                        app:boxCornerRadiusBottomStart="10dp"[m
+[32m+[m[32m                        app:boxCornerRadiusTopEnd="10dp"[m
+[32m+[m[32m                        app:boxCornerRadiusTopStart="10dp"[m
+[32m+[m[32m                        app:boxStrokeWidth="1.5dp"[m
+[32m+[m[32m                        app:boxStrokeWidthFocused="2.5dp"[m
+[32m+[m[32m                        app:boxBackgroundColor="#161B22"[m
+[32m+[m[32m                        app:endIconMode="password_toggle"[m
+[32m+[m[32m                        app:hintEnabled="true">[m
+ [m
+[31m-            <TextView[m
+[31m-                android:layout_width="match_parent"[m
+[31m-                android:layout_height="wrap_content"[m
+[31m-                android:layout_marginBottom="8dp"[m
+[31m-                android:letterSpacing="0.08"[m
+[31m-                android:text="ENCRYPTION LAYER"[m
+[31m-                android:textColor="#E0E0E0"[m
+[31m-                android:textSize="11sp"[m
+[31m-                android:textStyle="bold" />[m
+[31m-[m
+[31m-            <com.google.android.material.textfield.TextInputLayout[m
+[31m-                android:id="@+id/til_engine_dropdown"[m
+[31m-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"[m
+[32m+[m[32m                        <com.google.android.material.textfield.TextInputEditText[m
+[32m+[m[32m                            android:id="@+id/et_password"[m
+[32m+[m[32m                            android:layout_width="match_parent"[m
+[32m+[m[32m                            android:layout_height="wrap_content"[m
+[32m+[m[32m                            android:inputType="textPassword"[m
+[32m+[m[32m                            android:paddingTop="12dp"[m
+[32m+[m[32m                            android:paddingBottom="12dp"[m
+[32m+[m[32m                            android:paddingStart="12dp"[m
+[32m+[m[32m                            android:paddingEnd="12dp"[m
+[32m+[m[32m                            android:textColor="#FFFFFF"[m
+[32m+[m[32m                            android:textSize="14sp" />[m
+[32m+[m
+[32m+[m[32m                    </com.google.android.material.textfield.TextInputLayout>[m
+[32m+[m[32m                </LinearLayout>[m
+[32m+[m[32m            </com.google.android.material.card.MaterialCardView>[m
+[32m+[m
+[32m+[m[32m            <com.google.android.material.card.MaterialCardView[m
+                 android:layout_width="match_parent"[m
+                 android:layout_height="wrap_content"[m
+[31m-                app:boxBackgroundColor="#33FF1744"[m
+[31m-                app:boxCornerRadiusBottomEnd="12dp"[m
+[31m-                app:boxCornerRadiusBottomStart="12dp"[m
+[31m-                app:boxCornerRadiusTopEnd="12dp"[m
+[31m-                app:boxCornerRadiusTopStart="12dp"[m
+[31m-                app:boxStrokeColor="#FF1744"[m
+[31m-                app:boxStrokeWidth="2dp"[m
+[31m-                app:boxStrokeWidthFocused="3dp"[m
+[31m-                app:endIconMode="dropdown_menu"[m
+[31m-                app:endIconTint="#FF1744"[m
+[31m-                app:hintEnabled="false">[m
+[31m-[m
+[31m-                <AutoCompleteTextView[m
+[31m-                    android:id="@+id/dropdown_engine"[m
+[32m+[m[32m                android:layout_marginBottom="10dp"[m
+[32m+[m[32m                app:cardBackgroundColor="#0D1117"[m
+[32m+[m[32m                app:cardCornerRadius="14dp"[m
+[32m+[m[32m                app:cardElevation="0dp"[m
+[32m+[m[32m                app:strokeColor="#21262D"[m
+[32m+[m[32m                app:strokeWidth="1dp">[m
+[32m+[m
+[32m+[m[32m                <LinearLayout[m
+                     android:layout_width="match_parent"[m
+                     android:layout_height="wrap_content"[m
+[31m-                    android:fontFamily="monospace"[m
+[31m-                    android:inputType="none"[m
+[31m-                    android:padding="14dp"[m
+[31m-                    android:text="max encryption (AES-256 + CHACHA20)"[m
+[31m-                    android:textColor="#FF1744"[m
+[31m-                    android:textSize="13sp"[m
+[31m-                    android:textStyle="bold" />[m
+[32m+[m[32m                    android:orientation="vertical"[m
+[32m+[m[32m                    android:padding="12dp">[m
+ [m
+[31m-            </com.google.android.material.textfield.TextInputLayout>[m
+[32m+[m[32m                    <TextView[m
+[32m+[m[32m                        android:layout_width="match_parent"[m
+[32m+[m[32m                        android:layout_height="wrap_content"[m
+[32m+[m[32m                        android:layout_marginBottom="6dp"[m
+[32m+[m[32m                        android:letterSpacing="0.08"[m
+[32m+[m[32m                        android:text="🛡️  ENCRYPTION ENGINE"[m
+[32m+[m[32m                        android:textColor="#8B949E"[m
+[32m+[m[32m                        android:textSize="11sp"[m
+[32m+[m[32m                        android:textStyle="bold" />[m
+ [m
+[31m-            <View[m
+[31m-                android:layout_width="match_parent"[m
+[31m-                android:layout_height="1dp"[m
+[31m-                android:layout_marginTop="16dp"[m
+[31m-                android:layout_marginBottom="14dp"[m
+[31m-                android:background="#1E2A3A" />[m
+[32m+[m[32m                    <com.google.android.material.textfield.TextInputLayout[m
+[32m+[m[32m                        android:id="@+id/til_engine_dropdown"[m
+[32m+[m[32m                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"[m
+[32m+[m[32m                        android:layout_width="match_parent"[m
+[32m+[m[32m                        android:layout_height="wrap_content"[m
+[32m+[m[32m                        app:boxCornerRadiusBottomEnd="10dp"[m
+[32m+[m[32m                        app:boxCornerRadiusBottomStart="10dp"[m
+[32m+[m[32m                        app:boxCornerRadiusTopEnd="10dp"[m
+[32m+[m[32m                        app:boxCornerRadiusTopStart="10dp"[m
+[32m+[m[32m                        app:boxStrokeWidth="1.5dp"[m
+[32m+[m[32m                        app:boxStrokeWidthFocused="2.5dp"[m
+[32m+[m[32m                        app:endIconMode="dropdown_menu"[m
+[32m+[m[32m                        app:hintEnabled="false">[m
+ [m
+[31m-            <com.google.android.material.checkbox.MaterialCheckBox[m
+[31m-                android:id="@+id/cb_dual_password"[m
+[31m-                android:layout_width="match_parent"[m
+[31m-                android:layout_height="wrap_content"[m
+[31m-                android:text="Double Password"[m
+[31m-                android:textColor="#9C27B0"[m
+[31m-                android:textSize="14sp"[m
+[31m-                android:textStyle="bold"[m
+[31m-                app:buttonTint="#9C27B0" />[m
+[32m+[m[32m                        <AutoCompleteTextView[m
+[32m+[m[32m                            android:id="@+id/dropdown_engine"[m
+[32m+[m[32m                            android:layout_width="match_parent"[m
+[32m+[m[32m                            android:layout_height="wrap_content"[m
+[32m+[m[32m                            android:fontFamily="monospace"[m
+[32m+[m[32m                            android:inputType="none"[m
+[32m+[m[32m                            android:paddingTop="12dp"[m
+[32m+[m[32m                            android:paddingBottom="12dp"[m
+[32m+[m[32m                            android:paddingStart="12dp"[m
+[32m+[m[32m                            android:paddingEnd="12dp"[m
+[32m+[m[32m                            android:textSize="12sp"[m
+[32m+[m[32m                            android:textStyle="bold" />[m
+ [m
+[31m-            <TextView[m
+[31m-                android:layout_width="match_parent"[m
+[31m-                android:layout_height="wrap_content"[m
+[31m-                android:layout_marginStart="32dp"[m
+[31m-                android:layout_marginTop="-6dp"[m
+[31m-                android:layout_marginBottom="4dp"[m
+[31m-                android:text="File will be encrypted twice with two different passwords. Both are required for decryption."[m
+[31m-                android:textColor="#CE93D8"[m
+[31m-                android:textSize="11sp" />[m
+[31m-[m
+[31m-            <com.google.android.material.textfield.TextInputLayout[m
+[31m-                android:id="@+id/til_second_password"[m
+[31m-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"[m
+[32m+[m[32m                    </com.google.android.material.textfield.TextInputLayout>[m
+[32m+[m[32m                </LinearLayout>[m
+[32m+[m[32m            </com.google.android.material.card.MaterialCardView>[m
+[32m+[m
+[32m+[m[32m            <com.google.android.material.card.MaterialCardView[m
+                 android:layout_width="match_parent"[m
+                 android:layout_height="wrap_content"[m
+[31m-                android:layout_marginStart="8dp"[m
+[31m-                android:layout_marginTop="10dp"[m
+[31m-                android:layout_marginEnd="8dp"[m
+[31m-                android:hint="Enter Second Password"[m
+[31m-                android:visibility="gone"[m
+[31m-                app:boxBackgroundColor="#332E0A4B"[m
+[31m-                app:boxCornerRadiusBottomEnd="12dp"[m
+[31m-                app:boxCornerRadiusBottomStart="12dp"[m
+[31m-                app:boxCornerRadiusTopEnd="12dp"[m
+[31m-                app:boxCornerRadiusTopStart="12dp"[m
+[31m-                app:boxStrokeColor="#9C27B0"[m
+[31m-                app:boxStrokeWidth="2dp"[m
+[31m-                app:boxStrokeWidthFocused="3dp"[m
+[31m-                app:endIconMode="password_toggle"[m
+[31m-                app:endIconTint="#CE93D8"[m
+[31m-                app:hintEnabled="true"[m
+[31m-                app:hintTextColor="#CE93D8">[m
+[31m-[m
+[31m-                <com.google.android.material.textfield.TextInputEditText[m
+[31m-                    android:id="@+id/et_second_password"[m
+[32m+[m[32m                android:layout_marginBottom="12dp"[m
+[32m+[m[32m                app:cardBackgroundColor="#0D1117"[m
+[32m+[m[32m                app:cardCornerRadius="14dp"[m
+[32m+[m[32m                app:cardElevation="0dp"[m
+[32m+[m[32m                app:strokeColor="#21262D"[m
+[32m+[m[32m                app:strokeWidth="1dp">[m
+[32m+[m
+[32m+[m[32m                <LinearLayout[m
+                     android:layout_width="match_parent"[m
+                     android:layout_height="wrap_content"[m
+[31m-                    android:inputType="textPassword"[m
+[31m-                    android:padding="16dp"[m
+[31m-                    android:textColor="#FFFFFF"[m
+[31m-                    android:textColorHint="#80CE93D8"[m
+[31m-                    android:textSize="15sp" />[m
+[32m+[m[32m                    android:orientation="vertical"[m
+[32m+[m[32m                    android:padding="12dp">[m
+ [m
+[31m-            </com.google.android.material.textfield.TextInputLayout>[m
+[32m+[m[32m                    <TextView[m
+[32m+[m[32m                        android:layout_width="match_parent"[m
+[32m+[m[32m                        android:layout_height="wrap_content"[m
+[32m+[m[32m                        android:layout_marginBottom="8dp"[m
+[32m+[m[32m                        android:letterSpacing="0.08"[m
+[32m+[m[32m                        android:text="⚙️  SECURITY OPTIONS"[m
+[32m+[m[32m                        android:textColor="#8B949E"[m
+[32m+[m[32m                        android:textSize="11sp"[m
+[32m+[m[32m                        android:textStyle="bold" />[m
+ [m
+[31m-            <View[m
+[31m-                android:layout_width="match_parent"[m
+[31m-                android:layout_height="1dp"[m
+[31m-                android:layout_marginTop="14dp"[m
+[31m-                android:layout_marginBottom="12dp"[m
+[31m-                android:background="#1E2A3A" />[m
+[32m+[m[32m                    <com.google.android.material.checkbox.MaterialCheckBox[m
+[32m+[m[32m                        android:id="@+id/cb_dual_password"[m
+[32m+[m[32m                        android:layout_width="match_parent"[m
+[32m+[m[32m                        android:layout_height="36dp"[m
+[32m+[m[32m                        android:text="🔐  Double Password Protection"[m
+[32m+[m[32m                        android:textColor="#CE93D8"[m
+[32m+[m[32m                        android:textSize="13sp"[m
+[32m+[m[32m                        android:textStyle="bold"[m
+[32m+[m[32m                        app:buttonTint="#9C27B0" />[m
+ [m
+[31m-            <com.google.android.material.checkbox.MaterialCheckBox[m
+[31m-                android:id="@+id/cb_just_zip"[m
+[31m-                android:layout_width="match_parent"[m
+[31m-                android:layout_height="wrap_content"[m
+[31m-                android:text="ZIP"[m
+[31m-                android:textColor="#00BCD4"[m
+[31m-                android:textSize="14sp"[m
+[31m-                app:buttonTint="#00BCD4" />[m
+[32m+[m[32m                    <TextView[m
+[32m+[m[32m                        android:layout_width="match_parent"[m
+[32m+[m[32m                        android:layout_height="wrap_content"[m
+[32m+[m[32m                        android:layout_marginStart="30dp"[m
+[32m+[m[32m                        android:layout_marginBottom="6dp"[m
+[32m+[m[32m                        android:text="Requires two distinct passwords to decrypt."[m
+[32m+[m[32m                        android:textColor="#6E7681"[m
+[32m+[m[32m                        android:textSize="10sp" />[m
+ [m
+[31m-            <TextView[m
+[31m-                android:layout_width="match_parent"[m
+[31m-                android:layout_height="wrap_content"[m
+[31m-                android:layout_marginStart="32dp"[m
+[31m-                android:layout_marginTop="-6dp"[m
+[31m-                android:layout_marginBottom="8dp"[m
+[31m-                android:text="Pack all files into a single ZIP before encryption."[m
+[31m-                android:textColor="#80DEEA"[m
+[31m-                android:textSize="11sp" />[m
+[31m-[m
+[31m-            <View[m
+[31m-                android:layout_width="match_parent"[m
+[31m-                android:layout_height="1dp"[m
+[31m-                android:layout_marginTop="4dp"[m
+[31m-                android:layout_marginBottom="8dp"[m
+[31m-                android:background="#1E2A3A" />[m
+[32m+[m[32m                    <com.google.android.material.textfield.TextInputLayout[m
+[32m+[m[32m                        android:id="@+id/til_second_password"[m
+[32m+[m[32m                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"[m
+[32m+[m[32m                        android:layout_width="match_parent"[m
+[32m+[m[32m                        android:layout_height="wrap_content"[m
+[32m+[m[32m                        android:layout_marginTop="2dp"[m
+[32m+[m[32m                        android:layout_marginBottom="8dp"[m
+[32m+[m[32m                        android:hint="Enter Second Password"[m
+[32m+[m[32m                        android:visibility="gone"[m
+[32m+[m[32m                        app:boxBackgroundColor="#161B22"[m
+[32m+[m[32m                        app:boxCornerRadiusBottomEnd="10dp"[m
+[32m+[m[32m                        app:boxCornerRadiusBottomStart="10dp"[m
+[32m+[m[32m                        app:boxCornerRadiusTopEnd="10dp"[m
+[32m+[m[32m                        app:boxCornerRadiusTopStart="10dp"[m
+[32m+[m[32m                        app:boxStrokeColor="#9C27B0"[m
+[32m+[m[32m                        app:boxStrokeWidth="1.5dp"[m
+[32m+[m[32m                        app:endIconMode="password_toggle"[m
+[32m+[m[32m                        app:endIconTint="#CE93D8"[m
+[32m+[m[32m                        app:hintEnabled="true">[m
+ [m
+[31m-            <com.google.android.material.checkbox.MaterialCheckBox[m
+[31m-                android:id="@+id/cb_delete_after"[m
+[31m-                android:layout_width="match_parent"[m
+[31m-                android:layout_height="wrap_content"[m
+[31m-                android:text="Delete After Encryption"[m
+[31m-                android:textColor="#FF1744"[m
+[31m-                android:textSize="14sp"[m
+[31m-                app:buttonTint="#FF1744" />[m
+[32m+[m[32m                        <com.google.android.material.textfield.TextInputEditText[m
+[32m+[m[32m                            android:id="@+id/et_second_password"[m
+[32m+[m[32m                            android:layout_width="match_parent"[m
+[32m+[m[32m                            android:layout_height="wrap_content"[m
+[32m+[m[32m                            android:inputType="textPassword"[m
+[32m+[m[32m                            android:paddingTop="10dp"[m
+[32m+[m[32m                            android:paddingBottom="10dp"[m
+[32m+[m[32m                            android:paddingStart="12dp"[m
+[32m+[m[32m                            android:paddingEnd="12dp"[m
+[32m+[m[32m                            android:textColor="#FFFFFF"[m
+[32m+[m[32m                            android:textSize="14sp" />[m
+ [m
+[31m-            <TextView[m
+[31m-                android:layout_width="match_parent"[m
+[31m-                android:layout_height="wrap_content"[m
+[31m-                android:layout_marginStart="32dp"[m
+[31m-                android:layout_marginTop="-6dp"[m
+[31m-                android:layout_marginBottom="4dp"[m
+[31m-                android:text="Securely overwrite and delete original files after encryption."[m
+[31m-                android:textColor="#FF8A80"[m
+[31m-                android:textSize="11sp" />[m
+[31m-[m
+[31m-            <View[m
+[31m-                android:layout_width="match_parent"[m
+[31m-                android:layout_height="20dp" />[m
+[32m+[m[32m                    </com.google.android.material.textfield.TextInputLayout>[m
+[32m+[m
+[32m+[m[32m                    <View[m
+[32m+[m[32m                        android:layout_width="match_parent"[m
+[32m+[m[32m                        android:layout_height="1dp"[m
+[32m+[m[32m                        android:layout_marginTop="4dp"[m
+[32m+[m[32m                        android:layout_marginBottom="6dp"[m
+[32m+[m[32m                        android:background="#161B22" />[m
+[32m+[m
+[32m+[m[32m                    <com.google.android.material.checkbox.MaterialCheckBox[m
+[32m+[m[32m                        android:id="@+id/cb_just_zip"[m
+[32m+[m[32m                        android:layout_width="match_parent"[m
+[32m+[m[32m                        android:layout_height="36dp"[m
+[32m+[m[32m                        android:text="📦  Archive to ZIP"[m
+[32m+[m[32m                        android:textColor="#80DEEA"[m
+[32m+[m[32m                        android:textSize="13sp"[m
+[32m+[m[32m                        android:textStyle="bold"[m
+[32m+[m[32m                        app:buttonTint="#00BCD4" />[m
+[32m+[m
+[32m+[m[32m                    <TextView[m
+[32m+[m[32m                        android:layout_width="match_parent"[m
+[32m+[m[32m                        android:layout_height="wrap_content"[m
+[32m+[m[32m                        android:layout_marginStart="30dp"[m
+[32m+[m[32m                        android:layout_marginBottom="6dp"[m
+[32m+[m[32m                        android:text="Bundle all files into a single ZIP before encryption."[m
+[32m+[m[32m                        android:textColor="#6E7681"[m
+[32m+[m[32m                        android:textSize="10sp" />[m
+[32m+[m
+[32m+[m[32m                    <View[m
+[32m+[m[32m                        android:layout_width="match_parent"[m
+[32m+[m[32m                        android:layout_height="1dp"[m
+[32m+[m[32m                        android:layout_marginTop="4dp"[m
+[32m+[m[32m                        android:layout_marginBottom="6dp"[m
+[32m+[m[32m                        android:background="#161B22" />[m
+[32m+[m
+[32m+[m[32m                    <com.google.android.material.checkbox.MaterialCheckBox[m
+[32m+[m[32m                        android:id="@+id/cb_delete_after"[m
+[32m+[m[32m                        android:layout_width="match_parent"[m
+[32m+[m[32m                        android:layout_height="36dp"[m
+[32m+[m[32m                        android:text="☣️  Shred &amp; Wipe Originals"[m
+[32m+[m[32m                        android:textColor="#FF8A80"[m
+[32m+[m[32m                        android:textSize="13sp"[m
+[32m+[m[32m                        android:textStyle="bold"[m
+[32m+[m[32m                        app:buttonTint="#FF1744" />[m
+[32m+[m
+[32m+[m[32m                    <TextView[m
+[32m+[m[32m                        android:layout_width="match_parent"[m
+[32m+[m[32m                        android:layout_height="wrap_content"[m
+[32m+[m[32m                        android:layout_marginStart="30dp"[m
+[32m+[m[32m                        android:text="Securely overwrite original files to prevent forensic recovery."[m
+[32m+[m[32m                        android:textColor="#6E7681"[m
+[32m+[m[32m                        android:textSize="10sp" />[m
+[32m+[m
+[32m+[m[32m                </LinearLayout>[m
+[32m+[m[32m            </com.google.android.material.card.MaterialCardView>[m
+ [m
+         </LinearLayout>[m
+     </ScrollView>[m
+[36m@@ -246,19 +283,19 @@[m
+     <com.google.android.material.button.MaterialButton[m
+         android:id="@+id/btn_start"[m
+         android:layout_width="match_parent"[m
+[31m-        android:layout_height="56dp"[m
+[32m+[m[32m        android:layout_height="52dp"[m
+         android:layout_alignParentBottom="true"[m
+[31m-        android:layout_marginStart="16dp"[m
+[31m-        android:layout_marginTop="12dp"[m
+[31m-        android:layout_marginEnd="16dp"[m
+[31m-        android:layout_marginBottom="16dp"[m
+[31m-        android:elevation="4dp"[m
+[31m-        android:letterSpacing="0.05"[m
+[31m-        android:text="START ENCRYPTION"[m
+[32m+[m[32m        android:layout_marginStart="14dp"[m
+[32m+[m[32m        android:layout_marginTop="8dp"[m
+[32m+[m[32m        android:layout_marginEnd="14dp"[m
+[32m+[m[32m        android:layout_marginBottom="12dp"[m
+[32m+[m[32m        android:elevation="8dp"[m
+[32m+[m[32m        android:letterSpacing="0.06"[m
+[32m+[m[32m        android:text="⚡ START ENCRYPTION"[m
+         android:textColor="#000000"[m
+[31m-        android:textSize="16sp"[m
+[32m+[m[32m        android:textSize="15sp"[m
+         android:textStyle="bold"[m
+         app:backgroundTint="#00E676"[m
+         app:cornerRadius="12dp" />[m
+ [m
+[31m-</RelativeLayout>[m
+[32m+[m[32m</RelativeLayout>[m
+\ No newline at end of file[m

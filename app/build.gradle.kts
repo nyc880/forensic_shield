@@ -16,6 +16,9 @@ plugins {
 }
 
 android {
+
+    ndkVersion = "27.0.12077973"
+
     namespace = "com.example.lock"
     compileSdk = compileSdkVer
 
@@ -28,9 +31,29 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        externalNativeBuild {
+            cmake {
+                cppFlags += listOf("-std=c++17")
+            }
+        }
+
         vectorDrawables {
             useSupportLibrary = true
         }
+    }
+
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+
+            version = "3.22.1"
+        }
+    }
+
+
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {
@@ -98,4 +121,9 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+
+    testImplementation("org.bouncycastle:bcprov-jdk18on:$bouncyCastleVersion")
+  
+    androidTestImplementation("androidx.test:core:1.6.1")
 }

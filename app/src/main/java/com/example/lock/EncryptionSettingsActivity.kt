@@ -12,6 +12,7 @@ import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
+import com.example.lock.ProcessingActivity
 import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -22,9 +23,11 @@ class EncryptionSettingsActivity : AppCompatActivity() {
     private lateinit var tilPassword: TextInputLayout
     private lateinit var tilEngineDropdown: TextInputLayout
     private lateinit var tilSecondPassword: TextInputLayout
+    private var tilSecondEngineDropdown: TextInputLayout? = null
 
     private lateinit var passwordInput: TextInputEditText
     private lateinit var dropdownEngine: AutoCompleteTextView
+    private var dropdownSecondEngine: AutoCompleteTextView? = null
     private lateinit var secondPasswordInput: TextInputEditText
 
     private lateinit var dualPasswordCheckBox: MaterialCheckBox
@@ -35,17 +38,30 @@ class EncryptionSettingsActivity : AppCompatActivity() {
     private var isKeyboardOpen = false
 
     enum class EngineType(val display: String, val colorHex: String, val bgHex: String) {
-        MAX("max encryption (AES-256 + CHACHA20)", "#FF1744", "#26FF1744"),
-        MEDIUM("medium encryption ( AES-256 )", "#FF9800", "#26FF9800"),
-        EASY("fast encryption ( X-chacha20 )", "#64B5F6", "#2664B5F6")
+        MAX("MAX encryption", "#FF1744", "#26FF1744"),
+        MEDIUM("MEDIUM encryption", "#FF9800", "#26FF9800"),
+        EASY("FAST encryption", "#64B5F6", "#2664B5F6")
     }
 
     private var selectedEngine = EngineType.MAX
+    private var selectedSecondEngine = EngineType.MEDIUM
 
     private fun <T : View> bind(idName: String): T {
         val id = resources.getIdentifier(idName, "id", packageName)
         if (id == 0) throw IllegalStateException("Missing id: $idName")
         return findViewById(id)
+    }
+
+    private fun <T : View> bindOptional(idName: String): T? {
+        val id = resources.getIdentifier(idName, "id", packageName)
+        if (id == 0) return null
+        return findViewById(id)
+    }
+
+    private fun nextEngine(current: EngineType): EngineType {
+        val values = EngineType.values()
+        val idx = values.indexOf(current)
+        return values[(idx + 1) % values.size]
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,9 +73,11 @@ class EncryptionSettingsActivity : AppCompatActivity() {
         tilPassword = bind("til_password")
         tilEngineDropdown = bind("til_engine_dropdown")
         tilSecondPassword = bind("til_second_password")
+        tilSecondEngineDropdown = bindOptional("til_second_engine_dropdown")
 
         passwordInput = bind("et_password")
         dropdownEngine = bind("dropdown_engine")
+        dropdownSecondEngine = bindOptional("dropdown_second_engine")
         secondPasswordInput = bind("et_second_password")
 
         dualPasswordCheckBox = bind("cb_dual_password")
@@ -70,6 +88,7 @@ class EncryptionSettingsActivity : AppCompatActivity() {
         val selectedFiles = intent.getStringArrayListExtra("SELECTED_FILES") ?: arrayListOf()
 
         setupEngineDropdown()
+        setupSecondEngineDropdown()
         setupDualPasswordToggle()
         setupKeyboardCloseListener()
 
@@ -86,11 +105,6 @@ class EncryptionSettingsActivity : AppCompatActivity() {
                 passwordInput.requestFocus()
                 return@setOnClickListener
             }
-            if (password.length < 4) {
-                tilPassword.error = "Password too short (min 4)"
-                return@setOnClickListener
-            }
-
             if (dualPasswordCheckBox.isChecked) {
                 if (secondPassword.isEmpty()) {
                     tilSecondPassword.error = "Please enter second password"
@@ -101,13 +115,30 @@ class EncryptionSettingsActivity : AppCompatActivity() {
                     tilSecondPassword.error = "Second password must be different"
                     return@setOnClickListener
                 }
-                if (secondPassword.length < 4) {
-                    tilSecondPassword.error = "Second password too short"
-                    return@setOnClickListener
-                }
             }
 
             val encType = if (justZipCheckBox.isChecked) "JUST_ZIP" else "JUST_FILES"
+
+            val secondEngineToUse = if (dualPasswordCheckBox.isChecked) {
+                if (dropdownSecondEngine != null && tilSecondEngineDropdown?.visibility == View.VISIBLE) {
+                    selectedSecondEngine
+                } else {
+                    var auto = nextEngine(selectedEngine)
+                    if (auto == selectedEngine) auto = EngineType.values().first { it != selectedEngine }
+                    auto
+                }
+            } else {
+                selectedEngine
+            }
+
+            if (dualPasswordCheckBox.isChecked && secondEngineToUse == selectedEngine) {
+                val auto = nextEngine(selectedEngine)
+                selectedSecondEngine = auto
+            }
+
+            val finalSecondEngine = if (dualPasswordCheckBox.isChecked) {
+                if (dropdownSecondEngine != null && tilSecondEngineDropdown?.visibility == View.VISIBLE) selectedSecondEngine else nextEngine(selectedEngine)
+            } else selectedEngine
 
             val intent = Intent(this, ProcessingActivity::class.java)
             intent.putExtra("MODE", "ENCRYPT")
@@ -116,6 +147,7 @@ class EncryptionSettingsActivity : AppCompatActivity() {
             intent.putExtra("SECOND_PASSWORD", if (dualPasswordCheckBox.isChecked) secondPassword else "")
             intent.putExtra("IS_DUAL_PASSWORD", dualPasswordCheckBox.isChecked)
             intent.putExtra("ENGINE_TYPE", selectedEngine.name)
+            intent.putExtra("SECOND_ENGINE_TYPE", finalSecondEngine.name)
             intent.putExtra("ENC_TYPE", encType)
             intent.putExtra("DELETE_AFTER", deleteCheckBox.isChecked)
             startActivity(intent)
@@ -149,6 +181,37 @@ class EncryptionSettingsActivity : AppCompatActivity() {
         dropdownEngine.setOnItemClickListener { _, _, position, _ ->
             selectedEngine = EngineType.values()[position]
             applyEngineColor(selectedEngine)
+            if (dualPasswordCheckBox.isChecked && dropdownSecondEngine == null) {
+                selectedSecondEngine = nextEngine(selectedEngine)
+            }
+            if (dropdownSecondEngine != null) {
+                updateSecondEngineOptions()
+            }
+        }
+    }
+
+    private fun setupSecondEngineDropdown() {
+        val dd = dropdownSecondEngine ?: return
+        val til = tilSecondEngineDropdown ?: return
+        val items = EngineType.values().map { it.display }
+        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, items)
+        dd.setAdapter(adapter)
+        selectedSecondEngine = nextEngine(selectedEngine)
+        dd.setText(selectedSecondEngine.display, false)
+        applySecondEngineColor(selectedSecondEngine)
+        dd.setOnItemClickListener { _, _, position, _ ->
+            selectedSecondEngine = EngineType.values()[position]
+            applySecondEngineColor(selectedSecondEngine)
+        }
+        til.visibility = if (dualPasswordCheckBox.isChecked) View.VISIBLE else View.GONE
+    }
+
+    private fun updateSecondEngineOptions() {
+        val dd = dropdownSecondEngine ?: return
+        if (selectedSecondEngine == selectedEngine) {
+            selectedSecondEngine = nextEngine(selectedEngine)
+            dd.setText(selectedSecondEngine.display, false)
+            applySecondEngineColor(selectedSecondEngine)
         }
     }
 
@@ -170,12 +233,32 @@ class EncryptionSettingsActivity : AppCompatActivity() {
         tilPassword.setEndIconTintList(colorState)
     }
 
+    private fun applySecondEngineColor(type: EngineType) {
+        val dd = dropdownSecondEngine ?: return
+        val til = tilSecondEngineDropdown ?: return
+        val color = Color.parseColor(type.colorHex)
+        val bgColor = Color.parseColor(type.bgHex)
+        val colorState = ColorStateList.valueOf(color)
+        val bgState = ColorStateList.valueOf(bgColor)
+        dd.setTextColor(color)
+        til.boxStrokeColor = color
+        til.setBoxBackgroundColorStateList(bgState)
+        til.setEndIconTintList(colorState)
+    }
+
     private fun setupDualPasswordToggle() {
         dualPasswordCheckBox.setOnCheckedChangeListener { _, isChecked ->
             tilSecondPassword.visibility = if (isChecked) View.VISIBLE else View.GONE
+            tilSecondEngineDropdown?.visibility = if (isChecked) View.VISIBLE else View.GONE
             if (!isChecked) {
                 secondPasswordInput.text?.clear()
                 tilSecondPassword.error = null
+            } else {
+                if (dropdownSecondEngine == null) {
+                    selectedSecondEngine = nextEngine(selectedEngine)
+                } else {
+                    updateSecondEngineOptions()
+                }
             }
         }
     }

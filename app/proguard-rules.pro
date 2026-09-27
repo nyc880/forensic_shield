@@ -1,21 +1,16 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
-
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
-
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+-keep class com.example.lock.enc.NativeMemoryManager { *; }
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+-keep class org.bouncycastle.crypto.** { *; }
+-keep class org.bouncycastle.jcajce.** { *; }
+-keep class org.bouncycastle.jce.** { *; }
+-keep class org.bouncycastle.util.** { *; }
+-dontwarn org.bouncycastle.**
+-dontwarn java.awt.**
+-dontwarn javax.naming.**
+-dontwarn sun.security.**
+-keepattributes SourceFile, LineNumberTable
+-renamesourcefileattribute SourceFile
+-dontwarn org.slf4j.**
+-dontwarn com.google.errorprone.**
