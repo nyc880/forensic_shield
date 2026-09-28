@@ -1,39 +1,3 @@
-// ============================================================================
-// ContainerHeader.kt — CVLT encrypted container header (format version 0x03)
-// Package: com.example.lock.enc
-//
-// Canonical layout — 86 bytes, fixed order, big-endian:
-//   [0..3]    magic      "CVLT" (0x43 0x56 0x4C 0x54)
-//   [4]       version    0x03
-//   [5..17]   KdfParams  (13 bytes: kdfId | memoryCostKb | iterations | parallelism)
-//   [18..49]  salt       (32 bytes, Argon2id)
-//   [50..73]  XChaCha20-Poly1305 master nonce (24 bytes)
-//   [74..85]  AES-256-GCM master nonce (12 bytes)
-//
-// Version history:
-//   0x01 — original format (truncation-vulnerable; never parsed here).
-//   0x02 — FINAL record + chained AAD + embedded KdfParams. ENCRYPTED WITH A
-//          NON-STANDARD XChaCha20 (wrong second ChaCha constant 0x33322064).
-//   0x03 — IDENTICAL on-disk structure to 0x02, but the XChaCha20 layer uses
-//          the STANDARD constants (draft-irtf-cfrg-xchacha-03 compliant).
-//          The bump exists purely so legacy 0x02 containers fail with a
-//          clear "Unsupported container version" instead of a confusing
-//          "authentication failed". No real user data exists in 0x02.
-//
-// Why the header is authenticated:
-//   1. KdfParams are embedded. Argon2id output is a function of (m, t, p):
-//      the exact parameters used at encryption time MUST travel with the
-//      container, otherwise decryption on another device (or after an app
-//      update) silently derives a different key and fails.
-//   2. The serialized header bytes are bound into the record chain:
-//      chainState[0] = HMAC-SHA384(chainMacKey, headerBytes), and chainState
-//      is part of every record's AAD. Any header tampering therefore breaks
-//      authentication of the first record.
-//   3. Parsing uses readFully semantics: a partial read can never masquerade
-//      as EOF, and hostile KDF parameter values are rejected by bounds
-//      validation inside KdfParams.fromByteArray (anti-DoS).
-// ============================================================================
-
 package com.example.lock.enc
 
 import java.io.DataInputStream

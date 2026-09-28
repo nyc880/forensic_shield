@@ -12,9 +12,9 @@ import javax.crypto.spec.SecretKeySpec
 
 object KdfConfig {
 
-    const val MEMORY_MB = 64
+    const val MEMORY_MB = 128
 
-    const val ITERATIONS = 3
+    const val ITERATIONS = 5
 
     const val PARALLELISM = 4
 
