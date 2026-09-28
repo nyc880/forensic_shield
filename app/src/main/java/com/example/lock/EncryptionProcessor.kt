@@ -6,7 +6,7 @@ import android.os.Environment
 import android.util.Log
 import com.example.lock.crypto.EngineType
 import com.example.lock.crypto.MaxEngineAdapter
-import com.example.lock.crypto.LightEncryptionManager
+import com.example.lock.crypto.lightEncryptionManager
 import com.example.lock.crypto.Lock
 import com.example.lock.safe_delete.PurgeOptions
 import com.example.lock.safe_delete.SecureDelete
@@ -209,7 +209,7 @@ class EncryptionProcessor(private val context: Context) {
                 }
                 outFile
             }
-            EngineType.EASY -> LightEncryptionManager().encryptFile(inputFile, outputDir, password.copyOf()) { snap: LightEncryptionManager.ProgressSnapshot ->
+            EngineType.EASY -> lightEncryptionManager().encryptFile(inputFile, outputDir, password.copyOf()) { snap: lightEncryptionManager.ProgressSnapshot ->
                 onProgress?.invoke(snap.percent)
             }
         }
@@ -256,7 +256,7 @@ class EncryptionProcessor(private val context: Context) {
                     Lock.encrypt(inputFile, tmp, firstPassBytes)
                     tmp
                 }
-                EngineType.EASY -> LightEncryptionManager().encryptFile(inputFile, context.cacheDir, firstPassword.copyOf()) { snap: LightEncryptionManager.ProgressSnapshot ->
+                EngineType.EASY -> lightEncryptionManager().encryptFile(inputFile, context.cacheDir, firstPassword.copyOf()) { snap: lightEncryptionManager.ProgressSnapshot ->
                     onProgress?.invoke(snap.percent / 2)
                 }
             }
@@ -289,7 +289,7 @@ class EncryptionProcessor(private val context: Context) {
                     Lock.encrypt(firstLayerFile, out, secondPassBytes)
                     out
                 }
-                EngineType.EASY -> LightEncryptionManager().encryptFile(firstLayerFile, outputDir, secondPassword.copyOf()) { snap: LightEncryptionManager.ProgressSnapshot ->
+                EngineType.EASY -> lightEncryptionManager().encryptFile(firstLayerFile, outputDir, secondPassword.copyOf()) { snap: lightEncryptionManager.ProgressSnapshot ->
                     onProgress?.invoke(50 + snap.percent / 2)
                 }
             }

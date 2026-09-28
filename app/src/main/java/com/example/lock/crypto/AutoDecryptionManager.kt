@@ -10,7 +10,7 @@ class AutoDecryption(private val context: Context) {
     private var defaultFallbackEngine: EngineType = EngineType.MAX
 
     private val mediumManager = MediumEncryptionManager()
-    private val lightManager = LightEncryptionManager()
+    private val lightManager = lightEncryptionManager()
 
     var lastActiveEngine: EngineType? = null
         private set

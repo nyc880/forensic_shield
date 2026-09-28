@@ -17,7 +17,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.lock.crypto.EngineType
-import com.example.lock.crypto.LightEncryptionManager
+import com.example.lock.crypto.lightEncryptionManager
 import com.example.lock.crypto.Lock
 import com.example.lock.crypto.MaxEngineAdapter
 import com.example.lock.file_manager.FilePreviewActivity
@@ -25,7 +25,6 @@ import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -874,12 +873,12 @@ class ProcessingActivity : AppCompatActivity() {
                 decryptWithLockSingle(inputFile, workDirectory, password)
             }
             EngineType.EASY -> {
-                LightEncryptionManager().decryptFile(
+                lightEncryptionManager().decryptFile(
                     inputFile = inputFile,
                     outputDirectory = workDirectory,
                     password = password.toCharArray(),
                     isCancelled = { isCancelledFlag },
-                    onProgress = { snap: LightEncryptionManager.ProgressSnapshot ->
+                    onProgress = { snap: lightEncryptionManager.ProgressSnapshot ->
                         val base = (completedFiles * 100) / totalFiles
                         val portion = snap.percent / totalFiles
                         updateProgressOnMainThread((base + portion).coerceIn(0, 100))
@@ -928,12 +927,12 @@ class ProcessingActivity : AppCompatActivity() {
                 decryptWithLockDualOuter(inputFile, workDirectory, firstPassword, secondPassword)
             }
             EngineType.EASY -> {
-                LightEncryptionManager().decryptFile(
+                lightEncryptionManager().decryptFile(
                     inputFile = inputFile,
                     outputDirectory = workDirectory,
                     password = secondPassword.toCharArray(),
                     isCancelled = { isCancelledFlag },
-                    onProgress = { snap: LightEncryptionManager.ProgressSnapshot ->
+                    onProgress = { snap: lightEncryptionManager.ProgressSnapshot ->
                         val base = (completedFiles * 100) / totalFiles
                         val portion = (snap.percent / 2) / totalFiles
                         updateProgressOnMainThread((base + portion).coerceIn(0, 100))
@@ -1038,7 +1037,7 @@ class ProcessingActivity : AppCompatActivity() {
                 }
             }
             EngineType.MEDIUM -> decryptWithLockSingle(file, workDir, password)
-            EngineType.EASY -> LightEncryptionManager().decryptFile(file, workDir, password.toCharArray(), isCancelled = { isCancelledFlag })
+            EngineType.EASY -> lightEncryptionManager().decryptFile(file, workDir, password.toCharArray(), isCancelled = { isCancelledFlag })
         }
     }
 

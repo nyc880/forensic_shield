@@ -23,7 +23,7 @@ enum class EngineType(val suffix: String, val zipSuffix: String) {
         /** "CVLT" — shared by the legacy (v11) and the new (v0x03) format. */
         private val MAGIC_CVLT = byteArrayOf(0x43, 0x56, 0x4C, 0x54)
 
-        /** "EZYS_EZY" — the real magic written by LightEncryptionManager. */
+        /** "EZYS_EZY" — the real magic written by lightEncryptionManager. */
         private const val MAGIC_EASY = "EZYS_EZY"
 
         private const val ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789"
@@ -124,7 +124,7 @@ enum class EngineType(val suffix: String, val zipSuffix: String) {
                         off += n
                     }
 
-                    // EASY: the real magic written by LightEncryptionManager
+                    // EASY: the real magic written by lightEncryptionManager
                     // is "EZYS_EZY" (the old "CVLT_EZY" check never matched).
                     if (String(headerBytes, 0, 8, Charsets.US_ASCII) == MAGIC_EASY) {
                         return EASY

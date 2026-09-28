@@ -149,7 +149,7 @@ class FileContainerEngine private constructor(
 
     companion object {
         /** Plaintext chunk size: 1 MiB. */
-        const val CHUNK_SIZE_BYTES = 1 * 1024 * 1024
+        const val CHUNK_SIZE_BYTES = 5 * 1024 * 1024
 
         private const val FLAG_INTERMEDIATE: Byte = 0x00
         private const val FLAG_FINAL: Byte = 0x01
@@ -714,7 +714,7 @@ class FileContainerEngine private constructor(
         onProgress: ((processedPlaintextBytes: Long) -> Unit)? = null,
         isCancelled: (() -> Boolean)? = null
     ) {
-        val din = DataInputStream(BufferedInputStream(inputStream, 64 * 1024))
+        val din = DataInputStream(BufferedInputStream(inputStream, 256 * 1024))
 
         val parsedHeader = try {
             ContainerHeader.readFrom(din)

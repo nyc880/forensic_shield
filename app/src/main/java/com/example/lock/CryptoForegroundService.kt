@@ -13,7 +13,6 @@ import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import com.example.lock.ProcessingActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -93,8 +92,14 @@ class CryptoForegroundService : Service() {
 
     private fun finish(status: CryptoWorkState.Status) {
         releaseWakeLock()
+        if (status == CryptoWorkState.Status.SUCCEEDED) {
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.cancel(NOTIFICATION_ID)
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return
+        }
         val text = when (status) {
-            CryptoWorkState.Status.SUCCEEDED -> "100% — completed"
             CryptoWorkState.Status.FAILED -> "Failed: ${CryptoWorkState.message.value}"
             else -> "Cancelled"
         }
@@ -131,9 +136,11 @@ class CryptoForegroundService : Service() {
     }
 
     private fun buildFinalNotification(text: String): Notification {
+        val isError = text.startsWith("Failed")
+        val icon = if (isError) android.R.drawable.stat_notify_error else android.R.drawable.stat_sys_download_done
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setContentTitle("Lock")
+            .setSmallIcon(icon)
+            .setContentTitle(if (isError) "Lock — Error" else "Lock")
             .setContentText(text)
             .setProgress(0, 0, false)
             .setOngoing(false)

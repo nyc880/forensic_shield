@@ -7,6 +7,8 @@ import org.bouncycastle.crypto.params.Argon2Parameters
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.EOFException
 import java.io.File
+import java.io.BufferedInputStream
+import java.io.BufferedOutputStream
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
@@ -73,13 +75,43 @@ object Lock {
     }
 
     fun encrypt(input: File, outputEnc: File, password1: ByteArray, password2: ByteArray) {
-        require(password2.isNotEmpty()) { "password2 empty - use single-arg encrypt" }
-        val tmp = File(outputEnc.parentFile ?: input.parentFile, "tmp_${hex(random(8))}.tmp")
-        try {
-            encryptLayer(input, tmp, password2, FILE_TYPE_RAW, null)
-            encryptLayer(tmp, outputEnc, password1, FILE_TYPE_NORMAL, input.name)
-        } finally {
-            shred(tmp)
+        require(password2.isNotEmpty())
+        if (input.length() <= 80 * 1024 * 1024) {
+            var firstBytes: ByteArray? = null
+            try {
+                val baos = java.io.ByteArrayOutputStream()
+                val tmp1 = File.createTempFile("med_s1_", ".tmp")
+                try {
+                    encryptLayer(input, tmp1, password2, FILE_TYPE_RAW, null)
+                    BufferedInputStream(java.io.FileInputStream(tmp1), 262144).use { s: BufferedInputStream -> s.copyTo(baos) }
+                } finally {
+                    shred(tmp1)
+                }
+                firstBytes = baos.toByteArray()
+                try {
+                    val f = java.io.ByteArrayOutputStream::class.java.getDeclaredField("buf")
+                    f.isAccessible = true
+                    java.util.Arrays.fill(f.get(baos) as ByteArray, 0.toByte())
+                } catch (_: Exception) {}
+                val bais = java.io.ByteArrayInputStream(firstBytes)
+                val tmp2 = File.createTempFile("med_s2_", ".tmp", outputEnc.parentFile)
+                try {
+                    BufferedOutputStream(java.io.FileOutputStream(tmp2), 262144).use { s: BufferedOutputStream -> s.write(bais.readBytes()) }
+                    encryptLayer(tmp2, outputEnc, password1, FILE_TYPE_NORMAL, input.name)
+                } finally {
+                    shred(tmp2)
+                }
+            } finally {
+                if (firstBytes != null) java.util.Arrays.fill(firstBytes, 0.toByte())
+            }
+        } else {
+            val tmp = File(outputEnc.parentFile ?: input.parentFile, "tmp_${hex(random(8))}.tmp")
+            try {
+                encryptLayer(input, tmp, password2, FILE_TYPE_RAW, null)
+                encryptLayer(tmp, outputEnc, password1, FILE_TYPE_NORMAL, input.name)
+            } finally {
+                shred(tmp)
+            }
         }
     }
 
@@ -132,7 +164,7 @@ object Lock {
     ) {
         require(input.isFile) { "input missing: $input" }
         val dataLen = input.length()
-        val fileSha = FileInputStream(input).use { sha256Stream(it) }
+        val fileSha = BufferedInputStream(FileInputStream(input), 262144).use { s: BufferedInputStream -> sha256Stream(s) }
 
         val salt = random(SALT_SIZE)
         val iv = random(IV_SIZE)
@@ -165,11 +197,11 @@ object Lock {
             var ctr = 1L
 
             try {
-                FileOutputStream(output).use { fo ->
+                BufferedOutputStream(FileOutputStream(output), 262144).use { fo: BufferedOutputStream ->
                     fo.write(header)
                     fo.write(encChunk(key, baseNonce, 0L, TYPE_M, meta, headerHash))
 
-                    FileInputStream(input).use { fi ->
+                    BufferedInputStream(FileInputStream(input), 262144).use { fi: BufferedInputStream ->
                         val buf = ByteArray(CHUNK_SIZE)
                         while (true) {
                             val n = fi.read(buf)
@@ -179,6 +211,7 @@ object Lock {
                             group.add(chunk)
                             if (group.size == PARITY_GROUP) {
                                 writeParity(fo, key, baseNonce, headerHash, group, ctr - group.size + 1)
+                                for (c in group) wipe(c)
                                 group.clear()
                             }
                             ctr++
@@ -186,11 +219,12 @@ object Lock {
                     }
                     if (group.isNotEmpty()) {
                         writeParity(fo, key, baseNonce, headerHash, group, ctr - group.size)
+                        for (c in group) wipe(c)
                         group.clear()
                     }
                 }
                 val backup = encChunk(key, baseNonce, BACKUP_FLAG or 0L, TYPE_B, meta, headerHash)
-                FileOutputStream(output, true).use { it.write(backup) }
+                BufferedOutputStream(FileOutputStream(output, true), 262144).use { b: BufferedOutputStream -> b.write(backup) }
             } catch (e: Exception) {
                 output.delete()
                 throw e
@@ -201,7 +235,7 @@ object Lock {
     }
 
     private fun writeParity(
-        fo: FileOutputStream,
+        fo: java.io.OutputStream,
         key: ByteArray,
         baseNonce: ByteArray,
         headerHash: ByteArray,
@@ -210,6 +244,7 @@ object Lock {
     ) {
         val parity = xorParity(group)
         fo.write(encChunk(key, baseNonce, PARITY_FLAG or groupStart, TYPE_P, parity, headerHash))
+        wipe(parity)
     }
 
     private fun decryptLayer(input: File, output: File, password: ByteArray) {
@@ -230,52 +265,61 @@ object Lock {
                 var written = 0L
                 val md = MessageDigest.getInstance("SHA-256")
 
-                FileOutputStream(output).use { fo ->
-                    while (written < dataLen) {
-                        val remChunks = (totalChunks - (ctr - 1L)).toInt()
-                        val gsz = minOf(PARITY_GROUP, remChunks)
-                        if (gsz <= 0) throw EOFException("truncated payload")
-                        val gStart = ctr
+                FileOutputStream(output).use { fos ->
+                    BufferedOutputStream(fos, 262144).use { fo: BufferedOutputStream ->
+                        while (written < dataLen) {
+                            val remChunks = (totalChunks - (ctr - 1L)).toInt()
+                            val gsz = minOf(PARITY_GROUP, remChunks)
+                            if (gsz <= 0) throw EOFException("truncated payload")
+                            val gStart = ctr
 
-                        val raws = ArrayList<ByteArray>(gsz)
-                        repeat(gsz) {
-                            raws += readChunk(raf) ?: throw EOFException("EOF data")
-                        }
-                        val rawParity = readChunk(raf)
-
-                        val plains = arrayOfNulls<ByteArray>(gsz)
-                        val failed = ArrayList<Int>()
-                        for (i in 0 until gsz) {
-                            try {
-                                plains[i] = decChunk(key!!, h.baseNonce, gStart + i, TYPE_D, raws[i], h.hash)
-                            } catch (e: Exception) {
-                                if (e is AEADBadTagException || e is javax.crypto.BadPaddingException) {
-                                    failed += i
-                                    plains[i] = null
-                                } else throw e
+                            val raws = ArrayList<ByteArray>(gsz)
+                            repeat(gsz) {
+                                raws += readChunk(raf) ?: throw EOFException("EOF data")
                             }
-                        }
+                            val rawParity = readChunk(raf)
 
-                        if (failed.size == 1 && rawParity != null) {
-                            val fi = failed[0]
-                            val pPlain = decChunk(key!!, h.baseNonce, PARITY_FLAG or gStart, TYPE_P, rawParity, h.hash)
-                            val valid = plains.mapIndexedNotNull { i, c -> if (i != fi) c else null }
-                            plains[fi] = xorParity(valid + listOf(pPlain))
-                        } else if (failed.isNotEmpty()) {
-                            throw IllegalArgumentException("chunk integrity failure: ${failed.size}")
-                        }
+                            val plains = arrayOfNulls<ByteArray>(gsz)
+                            val failed = ArrayList<Int>()
+                            for (i in 0 until gsz) {
+                                try {
+                                    plains[i] = decChunk(key!!, h.baseNonce, gStart + i, TYPE_D, raws[i], h.hash)
+                                } catch (e: Exception) {
+                                    if (e is AEADBadTagException || e is javax.crypto.BadPaddingException) {
+                                        failed += i
+                                        plains[i] = null
+                                    } else throw e
+                                }
+                            }
 
-                        for (pc in plains) {
-                            val c = pc!!
-                            val wl = minOf(c.size.toLong(), dataLen - written).toInt()
-                            fo.write(c, 0, wl)
-                            md.update(c, 0, wl)
-                            written += wl
+                            if (failed.size == 1 && rawParity != null) {
+                                val fi = failed[0]
+                                var pPlain: ByteArray? = decChunk(key!!, h.baseNonce, PARITY_FLAG or gStart, TYPE_P, rawParity, h.hash)
+                                try {
+                                    val valid = plains.mapIndexedNotNull { i, c -> if (i != fi) c else null }
+                                    plains[fi] = xorParity(valid + listOf(pPlain!!))
+                                } finally {
+                                    pPlain?.let { wipe(it) }
+                                }
+                            } else if (failed.isNotEmpty()) {
+                                throw IllegalArgumentException("chunk integrity failure: ${failed.size}")
+                            }
+
+                            for (pc in plains) {
+                                val c = pc!!
+                                val wl = minOf(c.size.toLong(), dataLen - written).toInt()
+                                fo.write(c, 0, wl)
+                                md.update(c, 0, wl)
+                                written += wl
+                            }
+                            for (r in raws) wipe(r)
+                            rawParity?.let { wipe(it) }
+                            for (pc in plains) pc?.let { wipe(it) }
+                            ctr += gsz
                         }
-                        ctr += gsz
+                        fo.flush()
+                        fos.fd.sync()
                     }
-                    fo.flush()
-                    fo.fd.sync()
                 }
 
                 if (!md.digest().contentEquals(expectedSha)) {
@@ -348,7 +392,6 @@ object Lock {
         return mac.doFinal().copyOf(MAGIC_SIZE)
     }
 
-    /** Same as Python: prefix[4] + ((u64(base[4:12]) + counter) & 0xFFFFFFFFFFFFFFFF) */
     private fun chunkNonce(base: ByteArray, counter: Long): ByteArray {
         val out = ByteArray(12)
         System.arraycopy(base, 0, out, 0, 4)
@@ -505,12 +548,16 @@ object Lock {
     private fun sha256Stream(inp: java.io.InputStream): ByteArray {
         val md = MessageDigest.getInstance("SHA-256")
         val buf = ByteArray(CHUNK_SIZE)
-        while (true) {
-            val n = inp.read(buf)
-            if (n < 0) break
-            if (n > 0) md.update(buf, 0, n)
+        try {
+            while (true) {
+                val n = inp.read(buf)
+                if (n < 0) break
+                if (n > 0) md.update(buf, 0, n)
+            }
+            return md.digest()
+        } finally {
+            java.util.Arrays.fill(buf, 0.toByte())
         }
-        return md.digest()
     }
 
     private fun ctEq(a: ByteArray, b: ByteArray): Boolean {
@@ -545,7 +592,6 @@ object Lock {
 
     private fun hex(b: ByteArray) = b.joinToString("") { "%02x".format(it) }
 }
-
 
 @RequiresApi(Build.VERSION_CODES.KITKAT)
 class MediumEncryptionManager {
@@ -625,7 +671,7 @@ class MediumEncryptionManager {
             val finalName = if (!originalName.isNullOrBlank()) originalName else inputFile.nameWithoutExtension
             result = nonConflictingFile(outputDirectory, finalName)
             if (!tempFile.renameTo(result)) {
-                tempFile.inputStream().use { i -> result.outputStream().use { o -> i.copyTo(o) } }
+                BufferedInputStream(tempFile.inputStream(), 262144).use { i: BufferedInputStream -> BufferedOutputStream(result.outputStream(), 262144).use { o: BufferedOutputStream -> i.copyTo(o) } }
                 tempFile.delete()
             }
             onProgress?.invoke(ProgressSnapshot(inputFile.length(), inputFile.length()))
