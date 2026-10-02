@@ -20,7 +20,7 @@ class MetadataConfirmActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_safe_delete_confirm)
+        setContentView(R.layout.activity_metadata_confirm)
 
         titleText = findViewById(R.id.title_text)
         warningText = findViewById(R.id.warning_text)

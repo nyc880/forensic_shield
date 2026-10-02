@@ -20,8 +20,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="FINAL WARNING"
-            android:textColor="#FF3D00"
+            android:text="METADATA PURGE"
+            android:textColor="#C9A85F"
             android:textSize="28sp"
             android:textStyle="bold" />
 
@@ -31,7 +31,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:gravity="center"
-            android:text="A cleaned copy will be created in the no-meta folder."
+            android:text="A cleaned copy will be written to (no-meta) folder."
             android:textColor="#FFCDD2"
             android:textSize="18sp"
             android:textStyle="bold" />
@@ -46,12 +46,23 @@
             android:textColor="#FFFFFF"
             android:textSize="16sp" />
 
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switch_safe_delete"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:enabled="true"
+            android:text="Safe delete original files"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            app:useMaterialThemeColors="true" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_confirm_delete"
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:layout_marginTop="28dp"
-            android:text="PURGE"
+            android:text="CREATE CLEAN COPIES"
             android:textAllCaps="false"
             android:textColor="#000000"
             android:textSize="17sp"
